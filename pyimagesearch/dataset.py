@@ -24,6 +24,7 @@ class SegmentationDataset(Dataset):
         image = tiff.imread(image_dir)
         image = image[1, :, :]  # the green channel
         mask = cv2.imread(mask_dir, 0)
+        mask[mask==255] = 1
 
         # convert to tensor
         image = torch.from_numpy(np.array(image, dtype=float))

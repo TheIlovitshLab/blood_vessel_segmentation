@@ -12,7 +12,7 @@ import torch
 import time
 import os
 import matplotlib.pyplot as plt
-
+from sklearn.metrics import confusion_matrix
 
 def data_loader(config=config):
     # load the image and mask filepaths
@@ -59,21 +59,46 @@ def load_model(train_len, test_len, config=config):
     return unet, loss_fn, optimizer, train_steps, test_steps
 
 
+def model_metrics(pred, mask):
+    mse = torch.mean(torch.square(pred - mask))
+
+    pred_th = torch.clone(pred)
+
+    pred_th[pred_th >= config.threshold] = 1
+    pred_th[pred_th < config.threshold] = 1
+
+    pred_flat = torch.reshape(pred_th, (1, -1))
+    mask_flat = torch.reshape(mask, (1, -1))
+
+    tn, fp, fn, tp = confusion_matrix(mask_flat[0].detach().numpy(), pred_flat[0].detach().numpy()).ravel()
+    acc = (tn + tp) / (tn + fp + fn + tp)
+    jacc = tp / (tp + fn + fp)
+
+    # ToDo: plot confusion matrix
+    # mat = confusion_matrix(mask_flat[0].detach().numpy(), pred_flat[0].detach().numpy()).ravel()
+    # df = pd.DataFrame(mat / np.sum(mat) * 10, index=[i for i in ('vessel', 'not vessel')], columns=[i for i in ('vessel', 'not vessel')])
+
+    return mse, acc, jacc
+
 def train_model(model, train_loader, loss_fn, optimizer):
     model.train()
 
     all_loss = []
     all_mse = []
+    all_acc = []
+    all_jacc = []
 
     for (image, mask) in train_loader:
         (image, mask) = (image.to(config.device), mask.to(config.device))
 
         pred = model(image)
         loss = loss_fn(pred, mask)
-        mse = torch.mean(torch.square(pred-mask))
+        mse, acc, jacc = model_metrics(pred, mask)
 
         all_loss.append(loss)
         all_mse.append(mse)
+        all_acc.append(acc)
+        all_jacc.append(jacc)
 
         optimizer.zero_grad()
         loss.backward()
@@ -81,8 +106,10 @@ def train_model(model, train_loader, loss_fn, optimizer):
 
     all_loss = sum(all_loss)/len(all_loss)
     all_mse = sum(all_mse)/len(all_mse)
+    all_acc = sum(all_acc)/len(all_acc)
+    all_jacc = sum(all_jacc)/len(all_jacc)
 
-    return all_loss, all_mse
+    return all_loss, all_mse, all_acc, all_jacc
 
 
 def eval_model(model, test_loader, epoch, plot=False):
@@ -91,16 +118,20 @@ def eval_model(model, test_loader, epoch, plot=False):
 
         all_loss = []
         all_mse = []
+        all_acc = []
+        all_jacc = []
 
         for (image, mask) in test_loader:
             (image, mask) = (image.to(config.device), mask.to(config.device))
 
             pred = model(image)
             loss = loss_fn(pred, mask)
-            mse = torch.mean(torch.square(pred-mask))
+            mse, acc, jacc = model_metrics(pred, mask)
 
             all_loss.append(loss)
             all_mse.append(mse)
+            all_acc = sum(all_acc) / len(all_acc)
+            all_jacc = sum(all_jacc) / len(all_jacc)
 
         all_loss = sum(all_loss)/len(all_loss)
         all_mse = sum(all_mse)/len(all_mse)
@@ -123,7 +154,7 @@ def eval_model(model, test_loader, epoch, plot=False):
 
         plt.show()
 
-    return all_loss, all_mse
+    return all_loss, all_mse, all_acc, all_jacc
 
 
 if __name__ == '__main__':
@@ -143,12 +174,12 @@ if __name__ == '__main__':
         print('epoch {}/{}'.format(epoch, config.epochs))
 
         # train
-        train_loss, train_mse = train_model(model, train_loader, loss_fn, optimizer)
+        train_loss, train_mse, train_acc, train_jacc = train_model(model, train_loader, loss_fn, optimizer)
         # total_train_loss += train_loss
         # total_train_mse += train_mse
 
         # eval
-        test_loss, test_mse = eval_model(model, test_loader, epoch, plot=True)
+        test_loss, test_mse, test_acc, test_jacc = eval_model(model, test_loader, epoch, plot=True)
         # total_test_loss += test_loss
         # total_test_mse += test_mse
 
@@ -158,8 +189,8 @@ if __name__ == '__main__':
         # avg_train_mse = total_train_mse / train_steps
         # avg_test_mse = total_test_mse / test_steps
 
-        print('train: loss {:.4f}, mse {:.4f}'.format(train_loss, train_mse))
-        print('test: loss {:.4f}, mse {:.4f}'.format(test_loss, test_mse))
+        print('train: loss {:.4f}, mse {:.4f}, acc {:.4f}, jacc {:.4f}'.format(train_loss, train_mse, train_acc, train_jacc))
+        print('test: loss {:.4f}, mse {:.4f}, acc {:.4f}, jacc {:.4f}'.format(test_loss, test_mse, test_acc, test_jacc))
 
         H['train_loss'].append(train_loss.cpu().detach().numpy())
         H['test_loss'].append(test_loss.cpu().detach().numpy())
