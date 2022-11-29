@@ -1,0 +1,13 @@
+dataset\train\images\sk53_1_cortex_1.tif
+dataset\train\images\rg1_1_comisure.tif
+dataset\train\images\rz6_7_cortex.tif
+dataset\train\images\rz5_1_cortex_2.tif
+dataset\train\images\rg1_4_cortex_2.tif
+dataset\train\images\rz6_3_midbrain.tif
+dataset\train\images\rg1_3_striatum.tif
+dataset\train\images\rg1_6_cortex.tif
+dataset\train\images\rg1_1_striatum_2.tif
+dataset\train\images\rz6_6_midbrain_3.tif
+dataset\train\images\rz6_4_striatum.tif
+dataset\train\images\rz6_6_cortex.tif
+dataset\train\images\rz6_2_hippocampus.tif
