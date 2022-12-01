@@ -15,7 +15,7 @@ num_classes = 1
 num_levels = 3
 
 init_lr = 0.001
-epochs = 40
+epochs = 2
 batch_size = 6
 
 input_image_w = 1200
@@ -25,6 +25,7 @@ threshold = 0.5
 
 output_dir = 'output'
 
-model_dir = os.path.join(output_dir, 'unet_best.pth')
-plots_dir = os.path.sep.join([output_dir, 'plot.png'])
-test_dir = os.path.sep.join([output_dir, 'test_paths.txt'])
+# model_dir = os.path.join(output_dir, 'unet_best.pth')
+# plots_dir = os.path.sep.join([output_dir, 'plot.png'])
+test_images_dir = 'images_paths.txt'
+test_masks_dir = 'masks_paths.txt'
