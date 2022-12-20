@@ -1,0 +1,8 @@
+dataset\train\images\rz6_7_striatum.tif
+dataset\train\images\rz6_7_cortex.tif
+dataset\train\images\sk53_1_hippocampus_1.tif
+dataset\train\images\rg1_4_cortex_2.tif
+dataset\train\images\rz5_1_hippocampus_2.tif
+dataset\train\images\rz5_5_cortex_2.tif
+dataset\train\images\rg1_5_cortex_2.tif
+dataset\train\images\rz5_5_hippocampus.tif

@@ -1,6 +1,8 @@
-from pyimagesearch.dataset import SegmentationDataset
-from pyimagesearch.model import UNet
-from pyimagesearch import config
+from dataset import SegmentationDataset
+from unet import UNet
+import data_transforms as d_tf
+import config
+
 from torch.nn import BCEWithLogitsLoss
 from torch.optim import Adam
 from torch.utils.data import DataLoader
@@ -40,10 +42,15 @@ def data_loader(model_dir, config=config, partition='train'):
         f.write('\n'.join(test_masks))
         f.close()
 
-        transforms = tf.Compose([tf.ToPILImage(),
-                                 # tf.Resize((config.input_image_h, config.input_image_w)),
-                                 tf.CenterCrop(1200),
-                                 tf.ToTensor()])
+        # transforms = tf.Compose([tf.ToPILImage(),
+        #                          tf.CenterCrop(1200),
+        #                          tf.Resize((config.input_image_h, config.input_image_w)),
+        #                          tf.ToTensor()])
+
+        transforms = tf.Compose([d_tf.CenterCrop(1200),
+                                 d_tf.Rescale((config.input_image_h, config.input_image_w)),
+                                 d_tf.ExpendDim(),
+                                 d_tf.ToTensor()])
 
         train_data = SegmentationDataset(image_dir=train_images, mask_dir=train_masks, transforms=transforms)
         test_data = SegmentationDataset(image_dir=test_images, mask_dir=test_masks, transforms=transforms)
@@ -62,17 +69,21 @@ def data_loader(model_dir, config=config, partition='train'):
         images = open(os.path.join(model_dir, config.test_images_dir)).read().strip().split("\n")
         masks = open(os.path.join(model_dir, config.test_masks_dir)).read().strip().split("\n")
 
-        transforms = tf.Compose([tf.ToPILImage(),
-                                 # tf.Resize((config.input_image_h, config.input_image_w)),
-                                 tf.CenterCrop(1200),
-                                 tf.ToTensor()])
+        # transforms = tf.Compose([tf.ToPILImage(),
+        #                          tf.CenterCrop(1200),
+        #                          tf.Resize((config.input_image_h, config.input_image_w)),
+        #                          tf.ToTensor()])
+
+        transforms = tf.Compose([d_tf.CenterCrop(1200),
+                                 d_tf.Rescale((config.input_image_h, config.input_image_w)),
+                                 d_tf.ExpendDim(),
+                                 d_tf.ToTensor()])
 
         test_data = SegmentationDataset(image_dir=images, mask_dir=masks, transforms=transforms)
         test_loader = DataLoader(test_data, shuffle=False, batch_size=1, pin_memory=config.pin_memory, num_workers=os.cpu_count())
         test_loader.len = len(test_data)
 
         return test_loader
-
 
 
 def load_model(train_len, test_len, config=config):
@@ -107,6 +118,7 @@ def model_metrics(pred, mask):
 
     return mse, acc, jacc
 
+
 def train_model(model, train_loader, loss_fn, optimizer):
     model.train()
 
@@ -115,11 +127,14 @@ def train_model(model, train_loader, loss_fn, optimizer):
     all_acc = []
     all_jacc = []
 
-    for (image, mask) in train_loader:
-        (image, mask) = (image.to(config.device), mask.to(config.device))
+    # for (image, mask) in train_loader:
+    #     (image, mask) = (image.to(config.device), mask.to(config.device))
+    for batch in train_loader:
+        image, mask = batch['image'], batch['mask']
+        image, mask = image.to(config.device), mask.to(config.device)
 
         pred = model(image)
-        loss = loss_fn(pred, mask)
+        loss = loss_fn(pred, mask.float())
         mse, acc, jacc = model_metrics(pred, mask)
 
         all_loss.append(loss)
@@ -148,11 +163,12 @@ def eval_model(model, test_loader, epoch, plot=False):
         all_acc = []
         all_jacc = []
 
-        for (image, mask) in test_loader:
-            (image, mask) = (image.to(config.device), mask.to(config.device))
+        for batch in test_loader:
+            image, mask = batch['image'], batch['mask']
+            image, mask = image.to(config.device), mask.to(config.device)
 
             pred = model(image)
-            loss = loss_fn(pred, mask)
+            loss = loss_fn(pred, mask.float())
             mse, acc, jacc = model_metrics(pred, mask)
 
             all_loss.append(loss)
@@ -178,7 +194,7 @@ def eval_model(model, test_loader, epoch, plot=False):
         axs[2].imshow(pred[0, 0, :, :])
         axs[2].set_title('pred')
 
-        axs[3].imshow(torch.square(pred[0, 0, :, :]-mask[0, 0, :, :]))
+        axs[3].imshow(torch.abs(pred[0, 0, :, :]-mask[0, 0, :, :]))
         axs[3].set_title('MSE')
 
         plt.show()
@@ -188,7 +204,7 @@ def eval_model(model, test_loader, epoch, plot=False):
 
 if __name__ == '__main__':
 
-    # create dir for saved models
+    # create dir to save models
     ct = "{0}".format(datetime.now().strftime("%Y%m%d_%H%M%S"))
     model_dir = os.path.join(config.output_dir, ct)
 
@@ -204,10 +220,6 @@ if __name__ == '__main__':
     start_t = time.time()
     best_mse = 100
     best_epoch = 0
-    # total_train_loss = 0
-    # total_test_loss = 0
-    # total_train_mse = 0
-    # total_test_mse = 0
 
     for epoch in range(config.epochs):
 
@@ -215,19 +227,9 @@ if __name__ == '__main__':
 
         # train
         train_loss, train_mse, train_acc, train_jacc = train_model(model, train_loader, loss_fn, optimizer)
-        # total_train_loss += train_loss
-        # total_train_mse += train_mse
 
         # eval
-        test_loss, test_mse, test_acc, test_jacc = eval_model(model, test_loader, epoch)
-        # total_test_loss += test_loss
-        # total_test_mse += test_mse
-
-        # # calc train and test loss
-        # avg_train_loss = total_train_loss / train_steps
-        # avg_test_loss = total_test_loss / test_steps
-        # avg_train_mse = total_train_mse / train_steps
-        # avg_test_mse = total_test_mse / test_steps
+        test_loss, test_mse, test_acc, test_jacc = eval_model(model, test_loader, epoch, plot=True)
 
         print('train: loss {:.4f}, mse {:.4f}, acc {:.4f}, jacc {:.4f}'.format(train_loss, train_mse, train_acc, train_jacc))
         print('test: loss {:.4f}, mse {:.4f}, acc {:.4f}, jacc {:.4f}'.format(test_loss, test_mse, test_acc, test_jacc))
@@ -250,9 +252,14 @@ if __name__ == '__main__':
     end_t = time.time()
 
     print('train finished')
-    print('total training time: {}'.format(end_t-start_t))
+    print(f'total training time: {end_t-start_t}')
+    print(f'best epoch {best_epoch}')
 
-    # plot the loss
+    # plots
+    plots_dir = os.path.join(model_dir, 'plots')
+    if not os.path.exists(plots_dir):
+        os.makedirs(plots_dir)
+
     plt.style.use('ggplot')
     plt.figure()
     plt.plot(train_metrics['train_loss'], label='train_loss')
@@ -261,22 +268,31 @@ if __name__ == '__main__':
     plt.xlabel('Epoch #')
     plt.ylabel('Loss')
     plt.legend(loc='lower left')
-    plt.savefig(config.plots_dir)
+    plt.savefig(os.path.join(plots_dir, 'loss_plot'))
 
-    # plot the mse
     plt.style.use('ggplot')
     plt.figure()
     plt.plot(train_metrics['train_mse'], label='train_mse')
     plt.plot(test_metrics['test_mse'], label='test_mse')
-    plt.title('Training Loss on Dataset')
+    plt.title('Training MSE on Dataset')
     plt.xlabel('Epoch #')
     plt.ylabel('MSE')
     plt.legend(loc='lower left')
-    plt.savefig(config.plots_dir)
+    plt.savefig(os.path.join(plots_dir, 'mse_plot'))
+
+    plt.style.use('ggplot')
+    plt.figure()
+    plt.plot(train_metrics['train_acc'], label='train_acc')
+    plt.plot(test_metrics['test_acc'], label='test_acc')
+    plt.title('Training Accuracy on Dataset')
+    plt.xlabel('Epoch #')
+    plt.ylabel('Accuracy')
+    plt.legend(loc='lower left')
+    plt.savefig(os.path.join(plots_dir, 'acc_plot'))
 
     # save models
-    best_dir = os.path.join(model_dir, f'unet_epoch_{best_epoch}.pth')
+    best_dir = os.path.join(model_dir, f'unet_best.pth')
     torch.save(model, best_dir)
 
-    last_dir = model_dir = os.path.join(model_dir, f'unet_epoch_{epoch}.pth')
+    last_dir = model_dir = os.path.join(model_dir, f'unet_last.pth')
     torch.save(model, last_dir)

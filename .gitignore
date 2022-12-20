@@ -1,2 +1,5 @@
 dataset
 .idea
+more
+__pycache__
+venv

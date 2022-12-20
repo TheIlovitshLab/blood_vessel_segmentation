@@ -1,4 +1,4 @@
-from pyimagesearch import config
+import config
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -33,29 +33,29 @@ def make_predictions(model, loader):
 
         all_images, all_masks, all_preds = [], [], []
 
-        for (image, mask) in test_loader:
+        for (image, mask) in loader:
             (image, mask) = (image.to(config.device), mask.to(config.device))
 
             pred = model(image)
-            th = (torch.max(pred) + torch.min(pred)) / 2
-            pred[pred >= th] = 1
-            pred[pred < th] = 0
+            # th = (torch.max(pred) + torch.min(pred)) / 2
+            # pred[pred >= th] = 1
+            # pred[pred < th] = 0
 
-            # fig, axs = plt.subplots(1, 4)
-            #
-            # axs[0].imshow(image[0, 0, :, :])
-            # axs[0].set_title('image')
-            #
-            # axs[1].imshow(mask[0, 0, :, :])
-            # axs[1].set_title('mask')
-            #
-            # axs[2].imshow(pred[0, 0, :, :])
-            # axs[2].set_title('pred')
-            #
-            # axs[3].imshow(torch.square(pred[0, 0, :, :] - mask[0, 0, :, :]))
-            # axs[3].set_title('MSE')
-            #
-            # plt.show()
+            fig, axs = plt.subplots(1, 4)
+
+            axs[0].imshow(image[0, 0, :, :])
+            axs[0].set_title('image')
+
+            axs[1].imshow(mask[0, 0, :, :])
+            axs[1].set_title('mask')
+
+            axs[2].imshow(pred[0, 0, :, :])
+            axs[2].set_title('pred')
+
+            axs[3].imshow(torch.square(pred[0, 0, :, :] - mask[0, 0, :, :]))
+            axs[3].set_title('MSE')
+
+            plt.show()
 
             all_images.append(image.numpy())
             all_masks.append(mask.numpy())
@@ -71,11 +71,11 @@ def make_predictions(model, loader):
 if __name__ == '__main__':
 
     # load model
-    model_name = '20221201_182556'
-    saved_epoch = '1'
+    model_name = '20221211_185900'
+    saved_epoch = 'last'
 
     model_dir = os.path.join(config.output_dir, model_name)
-    unet = torch.load(os.path.join(model_dir, f'unet_epoch_{saved_epoch}.pth')).to(config.device)
+    unet = torch.load(os.path.join(model_dir, f'unet_{saved_epoch}.pth')).to(config.device)
 
     # load test files
     test_loader = data_loader(model_dir, partition='test')
