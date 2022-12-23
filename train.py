@@ -124,7 +124,7 @@ def model_metrics(pred, mask):
     return mse, acc, jacc, pred_th
 
 
-def plot_preds(image, pred, pred_th, mask, epoch, partition='test'):
+def plot_preds(image, pred, pred_th, mask, epoch, partition='test', save_dir=None, fig_num=0):
 
     # create fn fp color map
     diff = (mask-pred_th)[0, 0, :, :].numpy().astype(int)
@@ -140,7 +140,8 @@ def plot_preds(image, pred, pred_th, mask, epoch, partition='test'):
             color_diff[i][j] = color_map[diff[i][j]]
 
     fig, axs = plt.subplots(1, 5, figsize=(18, 4))
-    fig.suptitle(f'epoch {epoch} - {partition}')
+    if epoch is not None:
+        fig.suptitle(f'epoch {epoch} - {partition}')
 
     axs[0].imshow(image[0, 0, :, :])
     axs[0].set_title('image')
@@ -152,13 +153,18 @@ def plot_preds(image, pred, pred_th, mask, epoch, partition='test'):
     axs[2].set_title('pred thresh')
 
     axs[3].imshow(mask[0, 0, :, :])
-    axs[3].set_title('mask')
+    axs[3].set_title('GT')
 
-    axs[4].imshow(color_diff)
+    axs[4].imshow(1 - mask[0, 0, :, :], cmap='Greys')
+    axs[4].imshow(color_diff, alpha=0.5)
     axs[4].legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
     axs[4].set_title('diff')
 
     plt.show()
+
+    if save_dir is not None:
+        plt.draw()
+        fig.savefig(os.path.join(save_dir, f'fig_{fig_num}'))
 
 
 def train_model(model, train_loader, loss_fn, optimizer):
@@ -257,7 +263,7 @@ if __name__ == '__main__':
         train_loss, train_mse, train_acc, train_jacc = train_model(model, train_loader, loss_fn, optimizer)
 
         # eval
-        test_loss, test_mse, test_acc, test_jacc = eval_model(model, test_loader, epoch, plot=True)
+        test_loss, test_mse, test_acc, test_jacc = eval_model(model, test_loader, epoch, plot=False)
 
         print('train: loss {:.4f}, mse {:.4f}, acc {:.4f}, jacc {:.4f}'.format(train_loss, train_mse, train_acc, train_jacc))
         print('test: loss {:.4f}, mse {:.4f}, acc {:.4f}, jacc {:.4f}'.format(test_loss, test_mse, test_acc, test_jacc))
@@ -283,7 +289,7 @@ if __name__ == '__main__':
     print(f'total training time: {end_t-start_t}')
     print(f'best epoch {best_epoch}')
 
-    # plots
+    # plots dir
     plots_dir = os.path.join(model_dir, 'plots')
     if not os.path.exists(plots_dir):
         os.makedirs(plots_dir)
