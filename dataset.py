@@ -22,7 +22,7 @@ class SegmentationDataset(Dataset):
 
         image = tiff.imread(image_dir)
         image = image[1, :, :]  # the green channel
-        image = image / 225.     # [0, 1]
+        # image = image / 225.     # [0, 1]
 
         mask = cv2.imread(mask_dir, 0)
         mask[mask == 255] = 1

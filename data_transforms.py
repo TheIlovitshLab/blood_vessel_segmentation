@@ -73,12 +73,38 @@ class CenterCrop(object):
 
         return {'image': image, 'mask': mask}
 
-class ExpendDim(object):
-    """expend dim from [batch, *size] to [1, 6, *size]"""
 
-    def __call__(selfself, sample):
+class RescalePixels(object):
+    """Rescale the image's pixels value to a given range.
+
+    Args:
+        new_range = (new_min, new_max) (tuple): Desired pixels range.
+    """
+
+    def __init__(self, new_range):
+        assert isinstance(new_range, tuple)
+        self.new_min = new_range[0]
+        self.new_max = new_range[1]
+
+    def __call__(self, sample):
+        image, mask = sample['image'], sample['mask']
+
+        old_min = np.min(image)
+        old_max = np.max(image)
+
+        new_image = (((image - old_min) * (self.new_max - self.new_min)) / (old_max - old_min)) + self.new_min
+        new_image = 1. - new_image
+
+        return {'image': new_image, 'mask': mask}
+
+
+class ExpendDim(object):
+    """expend dim from [batch, *size] to [1, batch, *size]"""
+
+    def __call__(self, sample):
         return {'image': np.expand_dims(sample['image'], axis=0),
                 'mask': np.expand_dims(sample['mask'], axis=0)}
+
 
 class ToTensor(object):
     """Convert ndarrays in sample to Tensors."""

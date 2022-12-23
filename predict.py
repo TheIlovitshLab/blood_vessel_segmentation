@@ -33,13 +33,14 @@ def make_predictions(model, loader):
 
         all_images, all_masks, all_preds = [], [], []
 
-        for (image, mask) in loader:
-            (image, mask) = (image.to(config.device), mask.to(config.device))
+        for batch in test_loader:
+            image, mask = batch['image'], batch['mask']
+            image, mask = image.to(config.device), mask.to(config.device)
 
             pred = model(image)
-            # th = (torch.max(pred) + torch.min(pred)) / 2
-            # pred[pred >= th] = 1
-            # pred[pred < th] = 0
+            th = ((torch.max(pred) + torch.min(pred)) / 2) * 0.7
+            pred[pred >= th] = 1
+            pred[pred < th] = 0
 
             fig, axs = plt.subplots(1, 4)
 
@@ -71,7 +72,7 @@ def make_predictions(model, loader):
 if __name__ == '__main__':
 
     # load model
-    model_name = '20221211_185900'
+    model_name = '20221220_200519'
     saved_epoch = 'last'
 
     model_dir = os.path.join(config.output_dir, model_name)

@@ -1,8 +1,0 @@
-dataset\train\masks\rz6_7_striatum.png
-dataset\train\masks\rz6_7_cortex.png
-dataset\train\masks\sk53_1_hippocampus_1.png
-dataset\train\masks\rg1_4_cortex_2.png
-dataset\train\masks\rz5_1_hippocampus_2.png
-dataset\train\masks\rz5_5_cortex_2.png
-dataset\train\masks\rg1_5_cortex_2.png
-dataset\train\masks\rz5_5_hippocampus.png

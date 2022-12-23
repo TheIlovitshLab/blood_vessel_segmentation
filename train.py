@@ -12,9 +12,11 @@ from imutils import paths
 import torch
 import os
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 from sklearn.metrics import confusion_matrix
 from datetime import *
 import time
+import numpy as np
 
 
 def data_loader(model_dir, config=config, partition='train'):
@@ -49,6 +51,7 @@ def data_loader(model_dir, config=config, partition='train'):
 
         transforms = tf.Compose([d_tf.CenterCrop(1200),
                                  d_tf.Rescale((config.input_image_h, config.input_image_w)),
+                                 d_tf.RescalePixels((0,1)),
                                  d_tf.ExpendDim(),
                                  d_tf.ToTensor()])
 
@@ -76,6 +79,7 @@ def data_loader(model_dir, config=config, partition='train'):
 
         transforms = tf.Compose([d_tf.CenterCrop(1200),
                                  d_tf.Rescale((config.input_image_h, config.input_image_w)),
+                                 d_tf.RescalePixels((0,1)),
                                  d_tf.ExpendDim(),
                                  d_tf.ToTensor()])
 
@@ -102,8 +106,9 @@ def model_metrics(pred, mask):
 
     pred_th = torch.clone(pred)
 
-    pred_th[pred_th >= config.threshold] = 1
-    pred_th[pred_th < config.threshold] = 1
+    th = ((torch.max(pred) + torch.min(pred)) / 2)
+    pred_th[pred_th >= th] = 1
+    pred_th[pred_th < th] = 0
 
     pred_flat = torch.reshape(pred_th, (1, -1))
     mask_flat = torch.reshape(mask, (1, -1))
@@ -116,7 +121,44 @@ def model_metrics(pred, mask):
     # mat = confusion_matrix(mask_flat[0].detach().numpy(), pred_flat[0].detach().numpy()).ravel()
     # df = pd.DataFrame(mat / np.sum(mat) * 10, index=[i for i in ('vessel', 'not vessel')], columns=[i for i in ('vessel', 'not vessel')])
 
-    return mse, acc, jacc
+    return mse, acc, jacc, pred_th
+
+
+def plot_preds(image, pred, pred_th, mask, epoch, partition='test'):
+
+    # create fn fp color map
+    diff = (mask-pred_th)[0, 0, :, :].numpy().astype(int)
+    color_map = {1: np.array([255, 0, 0]),      # red = fn
+                 -1: np.array([0, 0, 255]),     # blue = fp
+                 0: np.array([255, 255, 255])}  # white
+    patches = [mpatches.Patch(color=color_map[1]/255, label='fn'),
+               mpatches.Patch(color=color_map[-1]/255, label='fp')]
+
+    color_diff = np.ndarray(shape=(diff.shape[0], diff.shape[1], 3), dtype=int)
+    for i in range(0, diff.shape[0]):
+        for j in range(0, diff.shape[1]):
+            color_diff[i][j] = color_map[diff[i][j]]
+
+    fig, axs = plt.subplots(1, 5, figsize=(18, 4))
+    fig.suptitle(f'epoch {epoch} - {partition}')
+
+    axs[0].imshow(image[0, 0, :, :])
+    axs[0].set_title('image')
+
+    axs[1].imshow(pred[0, 0, :, :])
+    axs[1].set_title('pred')
+
+    axs[2].imshow(pred_th[0, 0, :, :])
+    axs[2].set_title('pred thresh')
+
+    axs[3].imshow(mask[0, 0, :, :])
+    axs[3].set_title('mask')
+
+    axs[4].imshow(color_diff)
+    axs[4].legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+    axs[4].set_title('diff')
+
+    plt.show()
 
 
 def train_model(model, train_loader, loss_fn, optimizer):
@@ -135,7 +177,7 @@ def train_model(model, train_loader, loss_fn, optimizer):
 
         pred = model(image)
         loss = loss_fn(pred, mask.float())
-        mse, acc, jacc = model_metrics(pred, mask)
+        mse, acc, jacc, _ = model_metrics(pred, mask)
 
         all_loss.append(loss)
         all_mse.append(mse)
@@ -169,7 +211,7 @@ def eval_model(model, test_loader, epoch, plot=False):
 
             pred = model(image)
             loss = loss_fn(pred, mask.float())
-            mse, acc, jacc = model_metrics(pred, mask)
+            mse, acc, jacc, pred_th = model_metrics(pred, mask)
 
             all_loss.append(loss)
             all_mse.append(mse)
@@ -181,23 +223,8 @@ def eval_model(model, test_loader, epoch, plot=False):
         all_acc = sum(all_acc) / len(all_acc)
         all_jacc = sum(all_jacc) / len(all_jacc)
 
-    if plot:
-        fig, axs = plt.subplots(1, 4)
-        fig.suptitle(f'epoch = {epoch}')
-
-        axs[0].imshow(image[0, 0, :, :])
-        axs[0].set_title('image')
-
-        axs[1].imshow(mask[0, 0, :, :])
-        axs[1].set_title('mask')
-
-        axs[2].imshow(pred[0, 0, :, :])
-        axs[2].set_title('pred')
-
-        axs[3].imshow(torch.abs(pred[0, 0, :, :]-mask[0, 0, :, :]))
-        axs[3].set_title('MSE')
-
-        plt.show()
+        if plot:
+            plot_preds(image, pred, pred_th, mask, epoch, partition='test')
 
     return all_loss, all_mse, all_acc, all_jacc
 
@@ -219,6 +246,7 @@ if __name__ == '__main__':
 
     start_t = time.time()
     best_mse = 100
+    best_loss = 100
     best_epoch = 0
 
     for epoch in range(config.epochs):
@@ -245,8 +273,8 @@ if __name__ == '__main__':
         test_metrics['test_jacc'].append(test_jacc)
 
         # best model
-        if test_mse < best_mse:
-            best_mse = test_mse
+        if test_loss < best_loss:
+            best_loss = test_loss
             best_epoch = epoch
 
     end_t = time.time()
