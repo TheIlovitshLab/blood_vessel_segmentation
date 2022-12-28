@@ -5,26 +5,7 @@ import torch
 import cv2
 import os
 import tifffile as tiff
-from train import data_loader, plot_preds
-
-
-def plot_results(image, mask, pred):
-
-    fig, axs = plt.subplots(1, 3, figsize=(10, 10))
-
-    axs[0].imshow(image[0, 0, :, :])
-    axs[0].set_title('image')
-
-    axs[1].imshow(mask[0, 0, :, :])
-    axs[1].set_title('mask')
-
-    axs[2].imshow(pred[0, 0, :, :])
-    axs[2].set_title('pred')
-
-    axs[3].imshow(torch.square(pred[0, 0, :, :] - mask[0, 0, :, :]))
-    axs[3].set_title('MSE')
-
-    plt.show()
+from main import data_loader, plot_preds
 
 
 def make_predictions(model, loader, plots_dir):
