@@ -1,7 +1,7 @@
 from torch.utils.data import Dataset
 import cv2
 import tifffile as tiff
-
+import numpy as np
 
 class SegmentationDataset(Dataset):
     def __init__(self, image_dir, mask_dir, transforms):
@@ -15,26 +15,16 @@ class SegmentationDataset(Dataset):
 
     def __getitem__(self, idx):
         image_dir = self.image_dir[idx]
-        mask_dir = self.mask_dir[idx]
-        # load the image from disk, swap its channels from BGR to RGB, and read the associated mask from disk in grayscale mode
-        # image = cv2.imread(image_path)
-        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
         image = tiff.imread(image_dir)
         image = image[1, :, :]  # the green channel
-        # image = image / 225.     # [0, 1]
 
-        mask = cv2.imread(mask_dir, 0)
-        mask[mask == 255] = 1
-        # image = np.load(image_dir)
-        # mask = np.load(mask_dir)
+        if self.mask_dir is not None:
+            mask_dir = self.mask_dir[idx]
+            mask = cv2.imread(mask_dir, 0)
+            mask[mask == 255] = 1
+        else:
+            mask = np.zeros(image.shape)
 
-        # # convert to tensor
-        # image = torch.from_numpy(np.array(image, dtype=float))
-        # mask = torch.from_numpy(np.array(mask, dtype=float))
-
-        # image = np.ndarray(image, dtype=float)
-        # mask = np.ndarray(mask, dtype=float)
         sample = {'image': image, 'mask': mask}
 
         # check to see if we are applying any transformations
