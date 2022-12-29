@@ -1,4 +1,6 @@
-dataset
+dataset/train/images
+dataset/train/masks
+dataset/train/raw_data
 .idea
 more
 __pycache__

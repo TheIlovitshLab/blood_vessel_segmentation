@@ -342,7 +342,7 @@ class UnetSegmentationModel:
         self.model = torch.load(os.path.join(self.model_dir, f'unet_{saved_epoch}.pth')).to(config.device)
 
         # create loaders
-        self.data_loader(partition='teat')
+        self.data_loader(partition='test')
 
         self.model.eval()
         with torch.no_grad():
