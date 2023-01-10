@@ -17,7 +17,7 @@ class SegmentationDataset(Dataset):
     def __getitem__(self, idx):
         image_dir = self.image_dir[idx]
         image = tiff.imread(image_dir)
-        image = image[1, :, :]  # the green channel
+        image = image[1, :, :].astype(np.uint8)  # the green channel
 
         if self.mask_dir is not None:
             mask_dir = self.mask_dir[idx]

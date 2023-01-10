@@ -35,12 +35,12 @@ class UnetSegmentationModel:
         train_transforms = tf.Compose([d_tf.CenterCrop(1200),
                                        d_tf.Rescale((config.input_image_h, config.input_image_w)),
                                        d_tf.ClaheImage(),
-                                       d_tf.RescalePixels((0, 1)),
+                                       # d_tf.RescalePixels((0, 1)),
                                        d_tf.ExpendDim(),
                                        d_tf.ToTensor()])
 
         test_transforms = tf.Compose([d_tf.ClaheImage(),
-                                      d_tf.RescalePixels((0, 1)),
+                                      # d_tf.RescalePixels((0, 1)),
                                       d_tf.ExpendDim(),
                                       d_tf.ToTensor()])
 
