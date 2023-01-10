@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import torch
 import numpy as np
 from torchvision import transforms as tf
@@ -74,6 +75,38 @@ class CenterCrop(object):
         return {'image': image, 'mask': mask}
 
 
+class ClaheImage(object):
+    """Clahe on image.
+
+    Args:
+
+    """
+
+    def __init__(self, clipLimit=7., tileGridSize=(8, 8)):
+        self.clipLimit = clipLimit
+        self.tileGridSize = tileGridSize
+
+    def __call__(self, sample):
+        image, mask = sample['image'], sample['mask']
+
+        clahe = cv2.createCLAHE(clipLimit=self.clipLimit, tileGridSize=self.tileGridSize)
+        new_image = clahe.apply(image)
+
+        # fig, axs = plt.subplots(1, 2, figsize=(18, 4))
+        # fig.suptitle('original')
+        # axs[0].imshow(image)
+        # axs[1].hist(image.ravel(),np.max(image),[0,np.max(image)])
+        # plt.show()
+        #
+        # fig, axs = plt.subplots(1, 2, figsize=(18, 4))
+        # fig.suptitle('After Clahe')
+        # axs[0].imshow(new_image)
+        # axs[1].hist(new_image.ravel(),np.max(new_image),[0,np.max(new_image)])
+        # plt.show()
+
+        return {'image': new_image, 'mask': mask}
+
+
 class RescalePixels(object):
     """Rescale the image's pixels value to a given range.
 
@@ -93,7 +126,7 @@ class RescalePixels(object):
         old_max = np.max(image)
 
         new_image = (((image - old_min) * (self.new_max - self.new_min)) / (old_max - old_min)) + self.new_min
-        new_image = 1. - new_image
+        new_image = np.max(new_image) - new_image
 
         return {'image': new_image, 'mask': mask}
 

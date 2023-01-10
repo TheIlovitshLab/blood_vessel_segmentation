@@ -32,6 +32,18 @@ class UnetSegmentationModel:
 
     def data_loader(self, partition='train'):
 
+        train_transforms = tf.Compose([d_tf.CenterCrop(1200),
+                                       d_tf.Rescale((config.input_image_h, config.input_image_w)),
+                                       d_tf.ClaheImage(),
+                                       d_tf.RescalePixels((0, 1)),
+                                       d_tf.ExpendDim(),
+                                       d_tf.ToTensor()])
+
+        test_transforms = tf.Compose([d_tf.ClaheImage(),
+                                      d_tf.RescalePixels((0, 1)),
+                                      d_tf.ExpendDim(),
+                                      d_tf.ToTensor()])
+
         if partition == 'train':
 
             # load the image and mask filepaths
@@ -55,19 +67,8 @@ class UnetSegmentationModel:
             f.write('\n'.join(test_masks))
             f.close()
 
-            # transforms = tf.Compose([tf.ToPILImage(),
-            #                          tf.CenterCrop(1200),
-            #                          tf.Resize((config.input_image_h, config.input_image_w)),
-            #                          tf.ToTensor()])
-
-            transforms = tf.Compose([d_tf.CenterCrop(1200),
-                                     d_tf.Rescale((config.input_image_h, config.input_image_w)),
-                                     d_tf.RescalePixels((0, 1)),
-                                     d_tf.ExpendDim(),
-                                     d_tf.ToTensor()])
-
-            train_data = SegmentationDataset(image_dir=train_images, mask_dir=train_masks, transforms=transforms)
-            test_data = SegmentationDataset(image_dir=test_images, mask_dir=test_masks, transforms=transforms)
+            train_data = SegmentationDataset(image_dir=train_images, mask_dir=train_masks, transforms=train_transforms)
+            test_data = SegmentationDataset(image_dir=test_images, mask_dir=test_masks, transforms=test_transforms)
             print('found {} examples in the training set...'.format(len(train_data)))
             print('found {} examples in the test set...'.format(len(test_data)))
 
@@ -86,18 +87,7 @@ class UnetSegmentationModel:
             images = open(os.path.join(self.model_dir, self.config.test_images_dir)).read().strip().split("\n")
             masks = open(os.path.join(self.model_dir, self.config.test_masks_dir)).read().strip().split("\n")
 
-            # transforms = tf.Compose([tf.ToPILImage(),
-            #                          tf.CenterCrop(1200),
-            #                          tf.Resize((config.input_image_h, config.input_image_w)),
-            #                          tf.ToTensor()])
-
-            transforms = tf.Compose([d_tf.CenterCrop(1200),
-                                     d_tf.Rescale((config.input_image_h, config.input_image_w)),
-                                     d_tf.RescalePixels((0, 1)),
-                                     d_tf.ExpendDim(),
-                                     d_tf.ToTensor()])
-
-            test_data = SegmentationDataset(image_dir=images, mask_dir=masks, transforms=transforms)
+            test_data = SegmentationDataset(image_dir=images, mask_dir=masks, transforms=test_transforms)
             test_loader = DataLoader(test_data, shuffle=False, batch_size=1, pin_memory=config.pin_memory,
                                      num_workers=os.cpu_count())
             test_loader.len = len(test_data)
@@ -107,13 +97,7 @@ class UnetSegmentationModel:
         elif partition == 'predict':
             images = sorted(list(paths.list_images(self.config.pred_images_dir)))
 
-            transforms = tf.Compose([d_tf.CenterCrop(1200),
-                                     d_tf.Rescale((config.input_image_h, config.input_image_w)),
-                                     d_tf.RescalePixels((0, 1)),
-                                     d_tf.ExpendDim(),
-                                     d_tf.ToTensor()])
-
-            pred_data = SegmentationDataset(image_dir=images, mask_dir=None, transforms=transforms)
+            pred_data = SegmentationDataset(image_dir=images, mask_dir=None, transforms=test_transforms)
             pred_loader = DataLoader(pred_data, shuffle=False, batch_size=1, pin_memory=config.pin_memory,
                                      num_workers=os.cpu_count())
             pred_loader.len = len(pred_data)
@@ -232,10 +216,13 @@ class UnetSegmentationModel:
 
     def model_metrics(self, pred, mask):
 
-        pred_th = torch.clone(pred)
-        th = ((torch.max(pred) + torch.min(pred)) / 2)
-        pred_th[pred_th >= th] = 1
-        pred_th[pred_th < th] = 0
+        pred_th = torch.sigmoid(pred)
+        pred_th[pred_th >= config.threshold] = 1
+        pred_th[pred_th < config.threshold] = 0
+        # pred_th = torch.clone(pred)
+        # th = ((torch.max(pred) + torch.min(pred)) / 2)
+        # pred_th[pred_th >= th] = 1
+        # pred_th[pred_th < th] = 0
 
         pred_flat = torch.reshape(pred_th, (1, -1))
         mask_flat = torch.reshape(mask, (1, -1))
@@ -263,10 +250,9 @@ class UnetSegmentationModel:
 
 
     @staticmethod
-    def plot_preds(image, pred, pred_th, mask, epoch, partition='test', save_dir=None, fig_num=0):
-
+    def plot_preds(image, pred, pred_th, mask, acc, epoch, partition='test', save_dir=None, fig_name=None):
         # create fn fp color map
-        diff = (mask - pred_th)[0, 0, :, :].numpy().astype(int)
+        diff = (mask - pred_th).numpy()[0, 0, :, :].astype(int)
         color_map = {1: np.array([255, 0, 0]),  # red = fn
                      -1: np.array([0, 0, 255]),  # blue = fp
                      0: np.array([255, 255, 255])}  # white
@@ -280,9 +266,11 @@ class UnetSegmentationModel:
 
         fig, axs = plt.subplots(1, 5, figsize=(18, 4))
         if epoch is not None:
-            fig.suptitle(f'epoch {epoch} - {partition}')
+            fig.suptitle(f'epoch {epoch+1} - {partition}')
+        if fig_name is not None:
+            fig.suptitle(f'{fig_name} - accuracy - {acc}')
 
-        axs[0].imshow(image[0, 0, :, :])
+        axs[0].imshow(image[0, 0, :, :], cmap='Greys')
         axs[0].set_title('image')
 
         axs[1].imshow(pred[0, 0, :, :])
@@ -303,7 +291,7 @@ class UnetSegmentationModel:
 
         if save_dir is not None:
             plt.draw()
-            fig.savefig(os.path.join(save_dir, f'fig_{fig_num}'))
+            fig.savefig(os.path.join(save_dir, fig_name))
 
 
     def Train(self):
@@ -327,7 +315,7 @@ class UnetSegmentationModel:
             self.train_model()
 
             # eval
-            self.eval_model(epoch, plot=False)
+            self.eval_model(epoch, plot=True)
 
             # best model
             if self.test_acc > self.best_acc:
@@ -355,6 +343,9 @@ class UnetSegmentationModel:
         # create loaders
         self.data_loader(partition='test')
 
+        files = self.test_loader.dataset.image_dir
+        files_names = [file.split('\\')[-1].split('.')[0] for file in files]
+
         self.model.eval()
         with torch.no_grad():
             all_images, all_masks, all_preds = [], [], []
@@ -365,15 +356,19 @@ class UnetSegmentationModel:
                 image, mask = image.to(config.device), mask.to(config.device)
 
                 pred = self.model(image)
-                # pred_th = torch.sigmoid(pred)
-                # # pred_th[pred_th >= self.config.threshold] = 1
-                # # pred_th[pred_th < self.config.threshold] = 0
-                pred_th = torch.clone(pred)
-                th = ((torch.max(pred_th) + torch.min(pred_th)) / 2)
-                pred_th[pred_th >= th] = 1
-                pred_th[pred_th < th] = 0
 
-                self.plot_preds(image, pred, pred_th, mask, epoch=None, partition=None, save_dir=plots_dir, fig_num=fig)
+                acc, precision, recall, dice, pred_th = self.model_metrics(pred, mask)
+
+                pred_th = torch.sigmoid(pred)
+                pred_th[pred_th >= config.threshold] = 1
+                pred_th[pred_th < config.threshold] = 0
+
+                # pred_th = torch.clone(pred)
+                # th = ((torch.max(pred_th) + torch.min(pred_th)) / 2)
+                # pred_th[pred_th >= th] = 1
+                # pred_th[pred_th < th] = 0
+
+                self.plot_preds(image, pred, pred_th, mask, acc, epoch=None, partition=None, save_dir=plots_dir, fig_name=files_names[fig])
                 fig += 1
 
                 all_images.append(image.numpy())
@@ -408,10 +403,13 @@ class UnetSegmentationModel:
                 image, mask = image.to(config.device), mask.to(config.device)
 
                 pred = self.model(image)
-                pred_th = torch.clone(pred)
-                th = ((torch.max(pred_th) + torch.min(pred_th)) / 2)
-                pred_th[pred_th >= th] = 1
-                pred_th[pred_th < th] = 0
+                pred_th = torch.sigmoid(pred)
+                pred_th[pred_th >= config.threshold] = 1
+                pred_th[pred_th < config.threshold] = 0
+                # pred_th = torch.clone(pred)
+                # th = ((torch.max(pred_th) + torch.min(pred_th)) / 2)
+                # pred_th[pred_th >= th] = 1
+                # pred_th[pred_th < th] = 0
 
                 # save prediction
                 pred_th = pred_th[0, 0, :, :].numpy().astype(int)

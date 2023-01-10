@@ -2,6 +2,7 @@ from torch.utils.data import Dataset
 import cv2
 import tifffile as tiff
 import numpy as np
+from PIL import Image
 
 class SegmentationDataset(Dataset):
     def __init__(self, image_dir, mask_dir, transforms):

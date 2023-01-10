@@ -21,7 +21,7 @@ batch_size = 4
 input_image_h = 1200
 input_image_w = 1200
 
-threshold = 0.5
+threshold = 0.4
 
 output_dir = 'output'
 

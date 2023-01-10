@@ -101,6 +101,6 @@ class UNet(Module):
         out = self.head(dec_features)
 
         if self.retain_dim:
-            out = F.interpolate(out, self.out_size)
+            out = F.interpolate(out, (x.shape[-2], x.shape[-1]))
 
         return out
