@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import torch
 import numpy as np
-from torchvision import transforms as tf
 import cv2
 
 
@@ -34,10 +33,6 @@ class Rescale(object):
 
         image = cv2.resize(image, (new_h, new_w))
         mask = cv2.resize(mask, (new_h, new_w))
-
-        # h and w are swapped for mask because for images,
-        # x and y axes are axis 1 and 0 respectively
-        # mask = mask * [new_w / w, new_h / h]
 
         return {'image': image, 'mask': mask}
 
@@ -75,14 +70,31 @@ class CenterCrop(object):
         return {'image': image, 'mask': mask}
 
 
+class NegativeImage(object):
+    """Returns the negative of the image"""
+
+    def __call__(self, sample):
+        image, mask = sample['image'], sample['mask']
+
+        new_image = np.max(image) - image
+
+        # fig, axs = plt.subplots(1, 2, figsize=(18, 4))
+        # axs[0].imshow(image)
+        # axs[0].set_title('original')
+        # axs[1].imshow(new_image)
+        # axs[1].set_title('negative')
+        # plt.show()
+
+        return {'image': new_image, 'mask': mask}
+
+
 class ClaheImage(object):
     """Clahe on image.
 
-    Args:
-
+    Args: clip limit, tileGridSize
     """
 
-    def __init__(self, clipLimit=7., tileGridSize=(8, 8)):
+    def __init__(self, clipLimit=4., tileGridSize=(8, 8)):
         self.clipLimit = clipLimit
         self.tileGridSize = tileGridSize
 
@@ -95,7 +107,7 @@ class ClaheImage(object):
         # fig, axs = plt.subplots(1, 2, figsize=(18, 4))
         # fig.suptitle('original')
         # axs[0].imshow(image)
-        # axs[1].hist(image.ravel(),np.max(image),[0,np.max(image)])
+        # axs[1].hist(image.ravel(), np.max(image),[0,np.max(image)])
         # plt.show()
         #
         # fig, axs = plt.subplots(1, 2, figsize=(18, 4))
@@ -128,11 +140,18 @@ class RescalePixels(object):
         new_image = (((image - old_min) * (self.new_max - self.new_min)) / (old_max - old_min)) + self.new_min
         new_image = np.max(new_image) - new_image
 
+        # fig, axs = plt.subplots(1, 2, figsize=(18, 4))
+        # axs[0].imshow(image)
+        # axs[0].set_title('original')
+        # axs[1].imshow(new_image)
+        # axs[1].set_title('after scalse to [0 1]')
+        # plt.show()
+
         return {'image': new_image, 'mask': mask}
 
 
 class ExpendDim(object):
-    """expend dim from [batch, *size] to [1, batch, *size]"""
+    """expend dim from [batch, *image_size] to [1, batch, *image_size]"""
 
     def __call__(self, sample):
         return {'image': np.expand_dims(sample['image'], axis=0),
