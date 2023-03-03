@@ -19,6 +19,8 @@ import time
 import numpy as np
 from argparse import ArgumentParser
 from sklearn import metrics
+import cv2
+import scipy.io as sio
 
 
 class UnetSegmentationModel:
@@ -33,25 +35,26 @@ class UnetSegmentationModel:
 
     def data_loader(self, partition='train'):
 
-        train_transforms = tf.Compose([d_tf.CenterCrop(1200),
-                                       d_tf.Rescale((config.input_image_h, config.input_image_w)),
+        train_transforms = tf.Compose([#d_tf.CenterCrop(1200),
+                                       d_tf.Rescale((512, 512)),
                                        # d_tf.NegativeImage(),
                                        # d_tf.ClaheImage(),
-                                       d_tf.RescalePixels((0, 1)),
+                                       # d_tf.RescalePixels((0, 1)),
                                        d_tf.ExpendDim(),
                                        d_tf.ToTensor()])
 
-        test_transforms = tf.Compose([# d_tf.NegativeImage(),
+        test_transforms = tf.Compose([#d_tf.NegativeImage(),
+                                      d_tf.Rescale((512, 512)),
                                       # d_tf.ClaheImage(),
-                                      d_tf.RescalePixels((0, 1)),
+                                      # d_tf.RescalePixels((0, 1)),
                                       d_tf.ExpendDim(),
                                       d_tf.ToTensor()])
 
         if partition == 'train':
 
             # load the image and mask filepaths
-            image_dir = sorted(list(paths.list_images(self.config.images_dir)))
-            mask_dir = sorted(list(paths.list_images(self.config.masks_dir)))
+            image_dir = sorted([os.path.join(self.config.images_dir, img) for img in os.listdir(self.config.images_dir)])
+            mask_dir = sorted([os.path.join(self.config.masks_dir, mask) for mask in os.listdir(self.config.masks_dir)])
 
             # split data to training and testing
             split = train_test_split(image_dir, mask_dir, test_size=self.config.test_split, random_state=42)
@@ -77,8 +80,8 @@ class UnetSegmentationModel:
 
             train_loader = DataLoader(train_data, shuffle=True, batch_size=config.batch_size,
                                       pin_memory=config.pin_memory, num_workers=os.cpu_count())
-            test_loader = DataLoader(test_data, shuffle=False, batch_size=1, pin_memory=config.pin_memory,
-                                     num_workers=os.cpu_count())
+            test_loader = DataLoader(test_data, shuffle=False, batch_size=1,
+                                     pin_memory=config.pin_memory, num_workers=os.cpu_count())
 
             train_loader.len = len(train_data)
             test_loader.len = len(test_data)
@@ -98,7 +101,8 @@ class UnetSegmentationModel:
             self.test_loader = test_loader
 
         elif partition == 'predict':
-            images = sorted(list(paths.list_images(self.config.pred_images_dir)))
+            # images = sorted(list(paths.list_images(self.config.pred_images_dir)))
+            images = sorted([os.path.join(self.config.pred_images_dir, img) for img in os.listdir(self.config.pred_images_dir)])
 
             pred_data = SegmentationDataset(image_dir=images, mask_dir=None, transforms=test_transforms)
             pred_loader = DataLoader(pred_data, shuffle=False, batch_size=1, pin_memory=config.pin_memory,
@@ -118,7 +122,7 @@ class UnetSegmentationModel:
             image, mask = image.to(self.config.device), mask.to(self.config.device)
 
             pred = self.model(image)
-            loss = self.loss_fn(pred.float(), mask.float())
+            loss = self.loss_fn(pred, mask)
             # loss += dice_loss(F.sigmoid(pred), mask.float(), multiclass=False)
 
             auc = self.model_metrics(pred, mask)
@@ -156,7 +160,7 @@ class UnetSegmentationModel:
                 image, mask = image.to(config.device), mask.to(config.device)
 
                 pred = self.model(image)
-                loss = self.loss_fn(pred.float(), mask.float())
+                loss = self.loss_fn(pred, mask)
                 auc = self.model_metrics(pred, mask)
 
                 all_loss.append(loss)
@@ -239,7 +243,7 @@ class UnetSegmentationModel:
         pred_flat = torch.reshape(pred, (1, -1))
         mask_flat = torch.reshape(mask, (1, -1))
 
-        auc = metrics.roc_auc_score(mask_flat.detach().numpy().squeeze().astype(float), pred_flat.detach().numpy().squeeze().astype(float))
+        auc = metrics.roc_auc_score(mask_flat.detach().numpy().squeeze(), pred_flat.detach().numpy().squeeze())
         # tn, fp, fn, tp = confusion_matrix(mask_flat[0].detach().numpy(), pred_flat[0].detach().numpy()).ravel()
         # acc = (tn + tp) / (tn + fp + fn + tp)
         # precision = tp / (tp + fp)
@@ -254,7 +258,7 @@ class UnetSegmentationModel:
 
 
     def save_model(self):
-        # save models
+        # save models and config
         best_dir = os.path.join(self.model_dir, f'unet_best.pth')
         torch.save(self.model, best_dir)
 
@@ -283,7 +287,7 @@ class UnetSegmentationModel:
         if fig_name is not None:
             fig.suptitle(f'{fig_name}')
 
-        axs[0].imshow(image, cmap='Greys')
+        axs[0].imshow(image)
         axs[0].set_title('image')
 
         axs[1].imshow(pred)
@@ -370,9 +374,13 @@ class UnetSegmentationModel:
                 pred = self.model(image)
                 pred = torch.sigmoid(pred)
 
-                all_images.append(image.numpy())
-                all_masks.append(mask.numpy())
-                all_preds.append(pred.numpy())
+                image = image.numpy()
+                mask = mask.numpy()
+                pred = pred.numpy()
+
+                all_images.append(image)
+                all_masks.append(mask)
+                all_preds.append(pred)
 
             all_images = np.concatenate(all_images).squeeze()
             all_masks = np.concatenate(all_masks).squeeze()
@@ -383,6 +391,7 @@ class UnetSegmentationModel:
 
             precision, recall = [], []
             tpr, fpr = [], []
+            f_score = []
             for th in thresholds:
                 all_preds_th = np.zeros(all_preds.shape)
                 all_preds_th[all_preds >= th] = 1
@@ -402,6 +411,7 @@ class UnetSegmentationModel:
                 tpr.append(tp/(tp+fn))
                 fpr.append(fp/(fp+tn))
 
+                f_score.append((2*tp) / (2*tp + fp + fn))
 
             precision = np.array(precision)
             recall = np.array(recall)
@@ -414,25 +424,34 @@ class UnetSegmentationModel:
             # plot pr curve
             plt.figure()
             plt.plot(recall, precision)
-            plt.legend(f'auc = {auc}')
+            plt.legend(f'auc = {float(auc)}')
             plt.title('PR Curve')
             plt.draw()
             plt.savefig(os.path.join(plots_dir, 'pr-curve'))
 
             plt.figure()
             plt.plot(fpr, tpr)
-            plt.legend(f'auc = {auc}')
+            plt.legend(f'auc = {float(roc_auc)}')
             plt.title('ROC Curve')
             plt.draw()
             plt.savefig(os.path.join(plots_dir, 'roc-curve'))
 
-            for idx in range(all_preds.shape[0]):
-                mask = all_masks[idx, :, :]
-                image = all_images[idx, :, :]
 
-                pred = all_preds[idx, :, :]
+            #chosen_th =
+
+            for idx in range(all_preds.shape[0]):
+                mask = all_masks[idx, :, :].squeeze()
+                image = all_images[idx, :, :].squeeze()
+
+                pred = all_preds[idx, :, :].squeeze()
                 pred_th = np.zeros(pred.shape)
-                pred_th[pred >= 0.4] = 1
+                pred_th[pred >= 0.1] = 1
+
+                # rescale back to original image shape
+                image = cv2.resize(image, (self.config.input_image_w, self.config.input_image_h), interpolation = cv2.INTER_AREA)
+                mask = cv2.resize(mask, (self.config.input_image_w, self.config.input_image_h), interpolation=cv2.INTER_AREA)
+                pred = cv2.resize(pred, (self.config.input_image_w, self.config.input_image_h), interpolation=cv2.INTER_AREA)
+                pred_th = cv2.resize(pred_th, (self.config.input_image_w, self.config.input_image_h), interpolation=cv2.INTER_AREA)
 
                 self.plot_preds(image, pred, pred_th, mask, epoch=None, partition=None, save_dir=plots_dir, fig_name=files_names[idx])
 
@@ -469,8 +488,9 @@ class UnetSegmentationModel:
 
                 # save prediction
                 pred_th = pred_th[0, 0, :, :].numpy().astype(int)
-                np.savetxt(save_pred[i], pred_th)
-                i += 1
+                sio.savemat(save_pred[i], pred_th)
+                # np.savetxt(save_pred[i], pred_th)
+                # i += 1
 
             print('segmentation finished')
 

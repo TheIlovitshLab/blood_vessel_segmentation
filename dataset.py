@@ -1,8 +1,10 @@
 from torch.utils.data import Dataset
-import cv2
+# import cv2
 import tifffile as tiff
 import numpy as np
-from PIL import Image
+# from PIL import Image
+import scipy.io as sio
+
 
 class SegmentationDataset(Dataset):
     def __init__(self, image_dir, mask_dir, transforms):
@@ -21,8 +23,10 @@ class SegmentationDataset(Dataset):
 
         if self.mask_dir is not None:
             mask_dir = self.mask_dir[idx]
-            mask = cv2.imread(mask_dir, 0)
-            mask[mask == 255] = 1
+            mask_mat = sio.loadmat(mask_dir)
+            mask = mask_mat['mask']
+            # mask = cv2.imread(mask_dir, 0)
+            # mask[mask == 255] = 1
         else:
             mask = np.zeros(image.shape)
 

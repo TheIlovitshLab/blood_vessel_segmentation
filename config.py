@@ -15,11 +15,11 @@ num_classes = 1
 num_levels = 3
 
 init_lr = 0.0001
-epochs = 40
+epochs = 100
 batch_size = 4
 
 input_image_h = 1200
-input_image_w = 1200
+input_image_w = 1900
 
 threshold = 0.4
 

@@ -162,5 +162,5 @@ class ToTensor(object):
     """Convert ndarrays in sample to Tensors."""
 
     def __call__(self, sample):
-        return {'image': torch.from_numpy(sample['image']).float(),
-                'mask': torch.from_numpy(sample['mask'])}
+        return {'image': torch.from_numpy(sample['image'].astype(float)).float(),
+                'mask': torch.from_numpy(sample['mask'].astype(float)).float()}
