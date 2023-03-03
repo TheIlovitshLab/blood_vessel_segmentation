@@ -424,14 +424,14 @@ class UnetSegmentationModel:
             # plot pr curve
             plt.figure()
             plt.plot(recall, precision)
-            plt.legend(f'auc = {float(auc)}')
+            plt.legend([f'auc = {float(auc)}'])
             plt.title('PR Curve')
             plt.draw()
             plt.savefig(os.path.join(plots_dir, 'pr-curve'))
 
             plt.figure()
             plt.plot(fpr, tpr)
-            plt.legend(f'auc = {float(roc_auc)}')
+            plt.legend([f'auc = {float(roc_auc)}'])
             plt.title('ROC Curve')
             plt.draw()
             plt.savefig(os.path.join(plots_dir, 'roc-curve'))
