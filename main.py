@@ -95,10 +95,10 @@ class UnetSegmentationModel:
             print('found {} examples in the training set...'.format(len(train_data)))
             print('found {} examples in the test set...'.format(len(test_data)))
 
-            train_loader = DataLoader(train_data, shuffle=True, batch_size=config.batch_size,
-                                      pin_memory=config.pin_memory, num_workers=os.cpu_count())
+            train_loader = DataLoader(train_data, shuffle=True, batch_size=self.config.batch_size,
+                                      pin_memory=self.config.pin_memory, num_workers=os.cpu_count())
             test_loader = DataLoader(test_data, shuffle=False, batch_size=1,
-                                     pin_memory=config.pin_memory, num_workers=os.cpu_count())
+                                     pin_memory=self.config.pin_memory, num_workers=os.cpu_count())
 
             train_loader.len = len(train_data)
             test_loader.len = len(test_data)
@@ -274,13 +274,10 @@ class UnetSegmentationModel:
         return auc
 
 
-    def save_model(self):
-        # save models and config
-        best_dir = os.path.join(self.model_dir, f'unet_best.pth')
-        torch.save(self.model, best_dir)
-
-        last_dir = model_dir = os.path.join(self.model_dir, f'unet_last.pth')
-        torch.save(self.model, last_dir)
+    def save_model(self, model_name):
+        # save model
+        savedir = os.path.join(self.model_dir, f'unet_{model_name}.pth')
+        torch.save(self.model, savedir)
 
 
     @staticmethod
@@ -356,13 +353,16 @@ class UnetSegmentationModel:
                 self.best_auc = self.test_auc
                 self.best_epoch = epoch
 
+                # save best model
+                self.save_model('best')
+
+            # save last model
+            self.save_model('last')
+
         end_t = time.time()
 
         # plot metrics
         self.plot_metrics()
-
-        # save model
-        self.save_model()
 
         print('train finished')
         print(f'total training time: {end_t - start_t}')
