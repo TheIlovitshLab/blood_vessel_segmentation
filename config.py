@@ -15,8 +15,8 @@ num_classes = 1
 num_levels = 3
 
 init_lr = 0.0001
-epochs = 100
-batch_size = 4
+epochs = 40
+batch_size = 8
 
 input_image_h = 1200
 input_image_w = 1900

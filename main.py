@@ -1,5 +1,7 @@
 from dataset import SegmentationDataset
-from unet import UNet
+# from unet import UNet
+from unet2 import UNet
+# from unet_model import UNet
 import data_transforms as d_tf
 import config
 
@@ -35,20 +37,35 @@ class UnetSegmentationModel:
 
     def data_loader(self, partition='train'):
 
-        train_transforms = tf.Compose([#d_tf.CenterCrop(1200),
-                                       d_tf.Rescale((512, 512)),
-                                       # d_tf.NegativeImage(),
-                                       # d_tf.ClaheImage(),
-                                       # d_tf.RescalePixels((0, 1)),
-                                       d_tf.ExpendDim(),
-                                       d_tf.ToTensor()])
+        train_transforms = tf.Compose([
+            # d_tf.CenterCrop(1200),
+            # d_tf.SigmoidStretch(0.5),
+            # d_tf.LinearStretch(),
+            # d_tf.RandomBrightness((0.5, 1.5)),
+            # d_tf.GaussNoise(0, 1),
+            # d_tf.RandomContrast((0.5, 1.5)),
+            # d_tf.RescalePixels((0, 1)),
+            d_tf.RandomCrop(),
+            d_tf.RandomFlip(),
+            d_tf.RandomRotate((-30, 30)),
+            d_tf.Rescale((512, 512)),
+            # d_tf.NegativeImage(),
+            # d_tf.ClaheImage(),
+            # d_tf.RescalePixels((0, 1)),
+            d_tf.ExpendDim(),
+            d_tf.ToTensor()
+        ])
 
-        test_transforms = tf.Compose([#d_tf.NegativeImage(),
-                                      d_tf.Rescale((512, 512)),
-                                      # d_tf.ClaheImage(),
-                                      # d_tf.RescalePixels((0, 1)),
-                                      d_tf.ExpendDim(),
-                                      d_tf.ToTensor()])
+        test_transforms = tf.Compose([
+            # d_tf.NegativeImage(),
+            # d_tf.LinearStretch(),
+            # d_tf.RescalePixels((0, 1)),
+            d_tf.Rescale((512, 512)),
+            # d_tf.ClaheImage(),
+            # d_tf.RescalePixels((0, 1)),
+            d_tf.ExpendDim(),
+            d_tf.ToTensor()
+        ])
 
         if partition == 'train':
 
@@ -57,7 +74,7 @@ class UnetSegmentationModel:
             mask_dir = sorted([os.path.join(self.config.masks_dir, mask) for mask in os.listdir(self.config.masks_dir)])
 
             # split data to training and testing
-            split = train_test_split(image_dir, mask_dir, test_size=self.config.test_split, random_state=42)
+            split = train_test_split(image_dir, mask_dir, test_size=self.config.test_split, random_state=42)    # todo: without random_state?
             train_images, test_images = split[:2]
             train_masks, test_masks = split[2:]
 
@@ -396,7 +413,7 @@ class UnetSegmentationModel:
                 all_preds_th = np.zeros(all_preds.shape)
                 all_preds_th[all_preds >= th] = 1
 
-                maskd_flat = np.reshape(all_masks, (-1)).squeeze().astype(float)
+                mask_flat = np.reshape(all_masks, (-1)).squeeze().astype(float)
                 preds_flat = np.reshape(all_preds_th, (-1)).squeeze().astype(float)
 
                 tp = (all_masks * all_preds_th).sum()
@@ -448,7 +465,7 @@ class UnetSegmentationModel:
                 pred_th[pred >= 0.1] = 1
 
                 # rescale back to original image shape
-                image = cv2.resize(image, (self.config.input_image_w, self.config.input_image_h), interpolation = cv2.INTER_AREA)
+                image = cv2.resize(image, (self.config.input_image_w, self.config.input_image_h), interpolation=cv2.INTER_AREA)
                 mask = cv2.resize(mask, (self.config.input_image_w, self.config.input_image_h), interpolation=cv2.INTER_AREA)
                 pred = cv2.resize(pred, (self.config.input_image_w, self.config.input_image_h), interpolation=cv2.INTER_AREA)
                 pred_th = cv2.resize(pred_th, (self.config.input_image_w, self.config.input_image_h), interpolation=cv2.INTER_AREA)
