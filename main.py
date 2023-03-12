@@ -40,11 +40,11 @@ class UnetSegmentationModel:
         train_transforms = tf.Compose([
             # d_tf.CenterCrop(1200),
             # d_tf.SigmoidStretch(0.5),
-            # d_tf.LinearStretch(),
-            # d_tf.RandomBrightness((0.5, 1.5)),
+            d_tf.LinearStretch(),
+            d_tf.RandomBrightness((0.5, 1.5)),
             # d_tf.GaussNoise(0, 1),
             # d_tf.RandomContrast((0.5, 1.5)),
-            # d_tf.RescalePixels((0, 1)),
+            d_tf.RescalePixels((0, 1)),
             d_tf.RandomCrop(),
             d_tf.RandomFlip(),
             d_tf.RandomRotate((-30, 30)),
@@ -58,8 +58,8 @@ class UnetSegmentationModel:
 
         test_transforms = tf.Compose([
             # d_tf.NegativeImage(),
-            # d_tf.LinearStretch(),
-            # d_tf.RescalePixels((0, 1)),
+            d_tf.LinearStretch(),
+            d_tf.RescalePixels((0, 1)),
             d_tf.Rescale((512, 512)),
             # d_tf.ClaheImage(),
             # d_tf.RescalePixels((0, 1)),
@@ -74,7 +74,7 @@ class UnetSegmentationModel:
             mask_dir = sorted([os.path.join(self.config.masks_dir, mask) for mask in os.listdir(self.config.masks_dir)])
 
             # split data to training and testing
-            split = train_test_split(image_dir, mask_dir, test_size=self.config.test_split, random_state=42)    # todo: without random_state?
+            split = train_test_split(image_dir, mask_dir, test_size=self.config.test_split)
             train_images, test_images = split[:2]
             train_masks, test_masks = split[2:]
 
@@ -220,6 +220,7 @@ class UnetSegmentationModel:
 
     def update_test_metrics(self, test_loss, test_auc):
         self.test_metrics['test_loss'].append(test_loss.cpu().detach().numpy())
+        self.test_metrics['test_auc'].append(test_auc)
         # self.test_metrics['test_acc'].append(test_acc)
         # self.test_metrics['test_precision'].append(test_precision)
         # self.test_metrics['test_recall'].append(test_recall)
@@ -287,8 +288,8 @@ class UnetSegmentationModel:
         color_map = {1: np.array([255, 0, 0]),  # red = fn
                      -1: np.array([0, 0, 255]),  # blue = fp
                      0: np.array([255, 255, 255])}  # white
-        patches = [mpatches.Patch(color=color_map[1] / 255, label='fn'),
-                   mpatches.Patch(color=color_map[-1] / 255, label='fp')]
+        patches = [mpatches.Patch(color=color_map[1] / 255, label='False Negative'),
+                   mpatches.Patch(color=color_map[-1] / 255, label='False Positive')]
 
         color_diff = np.ndarray(shape=(diff.shape[0], diff.shape[1], 3), dtype=int)
         for i in range(0, diff.shape[0]):
@@ -302,28 +303,28 @@ class UnetSegmentationModel:
             fig.suptitle(f'{fig_name}')
 
         axs[0].imshow(image)
-        axs[0].set_title('image')
+        axs[0].set_title('Image')
 
         axs[1].imshow(pred)
-        axs[1].set_title('pred')
+        axs[1].set_title('Prediction')
 
         axs[2].imshow(pred_th)
-        axs[2].set_title('pred thresh')
+        axs[2].set_title('Binary Prediction')
 
         axs[3].imshow(mask)
-        axs[3].set_title('GT')
+        axs[3].set_title('Ground Truth')
 
         axs[4].imshow(1 - mask, cmap='Greys')
         axs[4].imshow(color_diff, alpha=0.5)
         axs[4].legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-        axs[4].set_title('diff')
+        axs[4].set_title('Different')
 
-        plt.show()
+        # plt.show()
 
         if save_dir is not None:
             plt.draw()
             fig.savefig(os.path.join(save_dir, fig_name))
-
+            plt.close(fig)
 
     def Train(self):
 
@@ -453,8 +454,8 @@ class UnetSegmentationModel:
             plt.draw()
             plt.savefig(os.path.join(plots_dir, 'roc-curve'))
 
-
-            #chosen_th =
+            idx_th = np.argmax(f_score)
+            chosen_th = thresholds[int(idx_th)]
 
             for idx in range(all_preds.shape[0]):
                 mask = all_masks[idx, :, :].squeeze()
@@ -462,7 +463,7 @@ class UnetSegmentationModel:
 
                 pred = all_preds[idx, :, :].squeeze()
                 pred_th = np.zeros(pred.shape)
-                pred_th[pred >= 0.1] = 1
+                pred_th[pred >= 0.2] = 1
 
                 # rescale back to original image shape
                 image = cv2.resize(image, (self.config.input_image_w, self.config.input_image_h), interpolation=cv2.INTER_AREA)
@@ -477,7 +478,7 @@ class UnetSegmentationModel:
     def Predict(self, saved_epoch):
 
         # load model
-        self.model = torch.load(os.path.join(self.model_dir, f'unet_{saved_epoch}.pth')).to(config.device)
+        self.model = torch.load(os.path.join(self.model_dir, f'unet_{saved_epoch}.pth')).to(self.config.device)
 
         # create loaders
         self.data_loader(partition='predict')
