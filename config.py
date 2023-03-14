@@ -19,7 +19,7 @@ epochs = 40
 batch_size = 8
 
 input_image_h = 1200
-input_image_w = 1900
+input_image_w = 1920
 
 threshold = 0.4
 
