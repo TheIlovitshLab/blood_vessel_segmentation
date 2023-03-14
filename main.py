@@ -499,7 +499,7 @@ class UnetSegmentationModel:
                 pred = self.model(image)
                 pred = torch.sigmoid(pred)
                 pred_th = np.zeros(pred.shape)
-                pred_th[pred_th >= 0.2] = 1
+                pred_th[pred >= 0.3] = 1
 
                 # save prediction
                 pred_th = pred_th.squeeze()
