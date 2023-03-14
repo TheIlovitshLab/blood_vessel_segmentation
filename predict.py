@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 if __name__ == '__main__':
 
     parser = ArgumentParser()
-    parser.add_argument('--model', type=str, default='20221228_212746')
+    parser.add_argument('--model', type=str, default='20230312_211623')
     parser.add_argument('--saved_epoch', type=str, default='best')
     args = parser.parse_args()
 

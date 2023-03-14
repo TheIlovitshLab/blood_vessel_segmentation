@@ -485,30 +485,28 @@ class UnetSegmentationModel:
 
         files = self.pred_loader.dataset.image_dir
         files_names = [file.split('\\')[-1].split('.')[0] for file in files]
-        save_pred = [os.path.join(self.config.pred_images_dir, file_name+'.txt') for file_name in files_names]
+        save_pred = [os.path.join(self.config.pred_images_dir, file_name+'_BW.mat') for file_name in files_names]
 
         self.model.eval()
         with torch.no_grad():
 
             i = 0
             for batch in self.pred_loader:
-                image, mask = batch['image'], batch['mask']
-                image, mask = image.to(config.device), mask.to(config.device)
+
+                image = batch['image']
+                image = image.to(config.device)
 
                 pred = self.model(image)
-                pred_th = torch.sigmoid(pred)
-                pred_th[pred_th >= config.threshold] = 1
-                pred_th[pred_th < config.threshold] = 0
-                # pred_th = torch.clone(pred)
-                # th = ((torch.max(pred_th) + torch.min(pred_th)) / 2)
-                # pred_th[pred_th >= th] = 1
-                # pred_th[pred_th < th] = 0
+                pred = torch.sigmoid(pred)
+                pred_th = np.zeros(pred.shape)
+                pred_th[pred_th >= 0.2] = 1
 
                 # save prediction
-                pred_th = pred_th[0, 0, :, :].numpy().astype(int)
-                sio.savemat(save_pred[i], pred_th)
-                # np.savetxt(save_pred[i], pred_th)
-                # i += 1
+                pred_th = pred_th.squeeze()
+                pred_th = cv2.resize(pred_th, (self.config.input_image_w, self.config.input_image_h), interpolation=cv2.INTER_AREA)
+
+                sio.savemat(save_pred[i], {'pred': pred_th})
+                i += 1
 
             print('segmentation finished')
 
