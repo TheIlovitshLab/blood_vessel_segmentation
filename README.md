@@ -1,7 +1,7 @@
 # Blood Vessels Segmentation
 This repository contains the code for blood vessel segmentation in microscope images,
 along with instructions for running both segmentation and training on new datasets.
-
+<img src="resources/io_rg11_3_striatum.png">
 
 ## Segment New Images
 To segment new microscope images, follow these steps:
