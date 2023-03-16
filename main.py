@@ -317,7 +317,7 @@ class UnetSegmentationModel:
         axs[4].imshow(1 - mask, cmap='Greys')
         axs[4].imshow(color_diff, alpha=0.5)
         axs[4].legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-        axs[4].set_title('Different')
+        axs[4].set_title('difference')
 
         # plt.show()
 
