@@ -518,6 +518,8 @@ if __name__ == '__main__':
     parser.add_argument('--test', type=bool, default=False)
     parser.add_argument('--model', type=str, default=None)
     parser.add_argument('--saved_epoch', type=str, default='best')
+    parser.add_argument('--epochs', type=int, default=100)
+    parser.add_argument('--batch_size', type=int, default=8)
     args = parser.parse_args()
 
     if args.train:
@@ -526,6 +528,10 @@ if __name__ == '__main__':
         model_dir = os.path.join(config.output_dir, ct)
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
+
+        # update config
+        config.epochs = args.epochs
+        config.batch_size = args.batch_size
 
         # train
         unet_model = UnetSegmentationModel(config, model_dir)
