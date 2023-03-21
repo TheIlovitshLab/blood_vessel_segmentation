@@ -8,13 +8,13 @@ To segment new microscope images, follow these steps:
 1. Copy the microscope images to the **'dataset/data_for_segmentation'** folder,
 ensuring that the folder only contains **'.tiff'** files.
 2. Run the following command in the terminal:
->python predict --model <model_name>.
+    >python predict.py --model <model_name>.
 
-This will generate predictions for the images, which will be saved in **'dataset/data_for_segmentation'**.
+    This will generate predictions for the images, which will be saved in **'dataset/data_for_segmentation'**.
 3. Run the Matlab file:
->auto_seg
+    >auto_seg
 
-to further process the predictions.
+    To further process the predictions
 4. Finally, open EBreaverApp and continue with the usual workflow.
 
 
