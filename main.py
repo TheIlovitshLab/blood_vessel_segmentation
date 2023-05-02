@@ -10,12 +10,10 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 from torchvision import transforms as tf
-from imutils import paths
 import torch
 import os
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from datetime import *
 import time
 import numpy as np
@@ -25,6 +23,7 @@ import cv2
 import scipy.io as sio
 import tifffile as tiff
 import seaborn as sns
+from tqdm import tqdm
 
 
 class UnetSegmentationModel:
@@ -122,6 +121,7 @@ class UnetSegmentationModel:
         elif partition == 'predict':
             # images = sorted(list(paths.list_images(self.config.pred_images_dir)))
             images = sorted([os.path.join(self.config.pred_images_dir, img) for img in os.listdir(self.config.pred_images_dir)])
+            images = [im for im in images if im.split('.')[-1] == 'tif']
 
             pred_data = SegmentationDataset(image_dir=images, mask_dir=None, transforms=test_transforms)
             pred_loader = DataLoader(pred_data, shuffle=False, batch_size=1, pin_memory=config.pin_memory,
@@ -514,7 +514,7 @@ class UnetSegmentationModel:
 
             print('test finished')
 
-    def Predict(self, saved_epoch, ):
+    def Predict(self, saved_epoch):
 
         # load model
         self.model = torch.load(os.path.join(self.model_dir, f'unet_{saved_epoch}.pth')).to(self.config.device)
@@ -523,12 +523,13 @@ class UnetSegmentationModel:
         self.data_loader(partition='predict')
 
         files = self.pred_loader.dataset.image_dir
-        files_names = [file.split('\\')[-1].split('.')[0] for file in files]
+        files_names = [file.split('\\')[-1].split('.')[0] for file in files if file.split('.')[-1] == 'tif']
         save_pred = [os.path.join(self.config.pred_images_dir, file_name+'_BW.mat') for file_name in files_names]
 
         self.model.eval()
         with torch.no_grad():
 
+            pbar = tqdm(total=len(files), desc=f'evaluating model on images')
             i = 0
             for batch in self.pred_loader:
 
@@ -546,7 +547,9 @@ class UnetSegmentationModel:
 
                 sio.savemat(save_pred[i], {'pred': pred_th})
                 i += 1
+                pbar.update(1)
 
+            pbar.close()
             print('segmentation finished')
 
 
