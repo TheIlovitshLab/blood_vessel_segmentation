@@ -15,7 +15,7 @@ import torch
 import os
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from datetime import *
 import time
 import numpy as np
@@ -23,6 +23,8 @@ from argparse import ArgumentParser
 from sklearn import metrics
 import cv2
 import scipy.io as sio
+import tifffile as tiff
+import seaborn as sns
 
 
 class UnetSegmentationModel:
@@ -317,7 +319,7 @@ class UnetSegmentationModel:
         axs[4].imshow(1 - mask, cmap='Greys')
         axs[4].imshow(color_diff, alpha=0.5)
         axs[4].legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-        axs[4].set_title('difference')
+        axs[4].set_title('Difference')
 
         # plt.show()
 
@@ -410,6 +412,7 @@ class UnetSegmentationModel:
             precision, recall = [], []
             tpr, fpr = [], []
             f_score = []
+            TP, FP, TN, FN =    [], [], [], []
             for th in thresholds:
                 all_preds_th = np.zeros(all_preds.shape)
                 all_preds_th[all_preds >= th] = 1
@@ -439,18 +442,44 @@ class UnetSegmentationModel:
             auc = metrics.auc(recall, precision)
             roc_auc = metrics.auc(fpr, tpr)
 
+            # plot confusion matrix
+            all_preds_th = np.zeros(all_preds.shape)
+            all_preds_th[all_preds >= 0.2] = 1
+
+            tp = (all_masks * all_preds_th).sum()
+            fp = ((1 - all_masks) * all_preds_th).sum()
+            tn = ((1 - all_masks) * (1 - all_preds_th)).sum()
+            fn = (all_masks * (1 - all_preds_th)).sum()
+
+            cmat = [[tp, fp], [fn, tn]]
+            plt.figure()
+            sns.heatmap(cmat, cmap='crest', annot=True, square=1, xticklabels=[1, 0], yticklabels=[1, 0],
+                        annot_kws={'fontsize': 10})
+            plt.xlabel('Predictions')
+            plt.ylabel('Ground Truth')
+            plt.draw()
+            plt.savefig(os.path.join(plots_dir, 'cmat'))
+
+            # cm = confusion_matrix(all_masks, all_preds)
+            # disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+            # disp.plot()
+            # plt.draw()
+            # plt.savefig(os.path.join(plots_dir, 'cm'))
+
             # plot pr curve
             plt.figure()
             plt.plot(recall, precision)
-            plt.legend([f'auc = {float(auc)}'])
+            plt.legend([f'AUC = {float(round(auc, 4))}'])
             plt.title('PR Curve')
             plt.draw()
             plt.savefig(os.path.join(plots_dir, 'pr-curve'))
 
             plt.figure()
             plt.plot(fpr, tpr)
-            plt.legend([f'auc = {float(roc_auc)}'])
+            plt.legend([f'AUC = {float(round(roc_auc, 4))}'])
             plt.title('ROC Curve')
+            plt.xlabel('False Positive Rate')
+            plt.ylabel('True Positive Rate')
             plt.draw()
             plt.savefig(os.path.join(plots_dir, 'roc-curve'))
 
@@ -466,16 +495,26 @@ class UnetSegmentationModel:
                 pred_th[pred >= 0.2] = 1
 
                 # rescale back to original image shape
-                image = cv2.resize(image, (self.config.input_image_w, self.config.input_image_h), interpolation=cv2.INTER_AREA)
                 mask = cv2.resize(mask, (self.config.input_image_w, self.config.input_image_h), interpolation=cv2.INTER_AREA)
                 pred = cv2.resize(pred, (self.config.input_image_w, self.config.input_image_h), interpolation=cv2.INTER_AREA)
                 pred_th = cv2.resize(pred_th, (self.config.input_image_w, self.config.input_image_h), interpolation=cv2.INTER_AREA)
 
-                self.plot_preds(image, pred, pred_th, mask, epoch=None, partition=None, save_dir=plots_dir, fig_name=files_names[idx])
+                org_image = tiff.imread(files[idx])
+
+                # fig, axs = plt.subplots(1, 2, figsize=(10,4))
+                # axs[0].imshow(org_image[1, :, :])
+                # axs[0].set_title('Input Image')
+                # axs[1].imshow(pred_th)
+                # axs[1].set_title('Output mask')
+                # plt.draw()
+                # fig.savefig(os.path.join(plots_dir, f'io_{files_names[idx]}'))
+                # plt.close()
+
+                self.plot_preds(org_image[1, :, :], pred, pred_th, mask, epoch=None, partition=None, save_dir=plots_dir, fig_name=files_names[idx])
 
             print('test finished')
 
-    def Predict(self, saved_epoch):
+    def Predict(self, saved_epoch, ):
 
         # load model
         self.model = torch.load(os.path.join(self.model_dir, f'unet_{saved_epoch}.pth')).to(self.config.device)

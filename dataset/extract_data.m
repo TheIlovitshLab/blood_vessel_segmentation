@@ -1,6 +1,9 @@
 clear; clc;
 
-all_ID = {'RG6 - MB 150', 'RG11 - MB 175'};
+% all_ID = {'RG6 - MB 150', 'RG11 - MB 175'};
+raw_data_dir = dir("raw_data");
+all_ID = {raw_data_dir.name};
+all_ID = all_ID(:, 3:end);
 
 for n = 1:length(all_ID)
     ID = all_ID{n};
@@ -18,9 +21,10 @@ for n = 1:length(all_ID)
             % save img and mask to train dir
             copyfile(fullfile('raw_data', ID, img_name), fullfile('train','images',img_name));
             
-            save_maks_name = strcat(base_name{1}, '.png');
+            save_maks_name = strcat(base_name{1}, '.mat');
             save_mask_dir = fullfile('train', 'masks', save_maks_name);
-            imwrite(mask, save_mask_dir)
+            save(save_mask_dir, 'mask')
+%             imwrite(mask, save_mask_dir)
             
         end
     end
