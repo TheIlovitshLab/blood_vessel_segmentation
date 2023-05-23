@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 if __name__ == '__main__':
 
     parser = ArgumentParser()
-    parser.add_argument('--model', type=str, default='20230312_211623')
+    parser.add_argument('--model', type=str, default='20230512_165741')
     parser.add_argument('--saved_epoch', type=str, default='best')
     parser.add_argument('--data_dir', type=str)
     parser.add_argument('--threshold', type=float, default=0.3)

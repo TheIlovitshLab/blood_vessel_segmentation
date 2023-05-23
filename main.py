@@ -460,11 +460,20 @@ class UnetSegmentationModel:
             plt.draw()
             plt.savefig(os.path.join(plots_dir, 'cmat'))
 
-            # cm = confusion_matrix(all_masks, all_preds)
-            # disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-            # disp.plot()
-            # plt.draw()
-            # plt.savefig(os.path.join(plots_dir, 'cm'))
+            # save metrics
+            metrics_txt = [f'tp: {tp}',
+                           f'fp: {fp}',
+                           f'tn: {tn}',
+                           f'fb: {fn}',
+                           f'accuracy: {(tp+tn)/(tp+tn+fp+fn)}',
+                           f'precision: {tp/(tp+fp)}',
+                           f'recall: {tp/(tp+fn)}',
+                           f'f1-score: {(2*tp)/(2*tp+fp+fn)}',
+                           f'IOU: {tp/(tp+fp+fn)}']
+
+            with open(os.path.join(plots_dir, 'results.txt'), 'w') as f:
+                f.write('\n'.join(metrics_txt))
+
 
             # plot pr curve
             plt.figure()

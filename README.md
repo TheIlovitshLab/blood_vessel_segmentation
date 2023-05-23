@@ -6,7 +6,7 @@ along with instructions for running both segmentation and training on new datase
 ## Segment New Images
 To segment new microscope images, follow these steps:
 1. Run the following command in the terminal:
-    >python predict.py --model <default=20230312_211623> --data_dir <data_dir> --threshold <default=0.3>
+    >python predict.py --model <default=20230512_165741> --data_dir <data_dir> --threshold <default=0.3>
 
     This will generate predictions for the images, which will be saved in data_dir. The mask will be saved as mat files 
    with the name: 'image_name_BW.mat'.
