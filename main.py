@@ -501,7 +501,7 @@ class UnetSegmentationModel:
 
                 pred = all_preds[idx, :, :].squeeze()
                 pred_th = np.zeros(pred.shape)
-                pred_th[pred >= 0.2] = 1
+                pred_th[pred >= self.config.threshold] = 1
 
                 # rescale back to original image shape
                 mask = cv2.resize(mask, (self.config.input_image_w, self.config.input_image_h), interpolation=cv2.INTER_AREA)
@@ -548,7 +548,7 @@ class UnetSegmentationModel:
                 pred = self.model(image)
                 pred = torch.sigmoid(pred)
                 pred_th = np.zeros(pred.shape)
-                pred_th[pred >= 0.3] = 1
+                pred_th[pred >= self.config.threshold] = 1
 
                 # save prediction
                 pred_th = pred_th.squeeze()
