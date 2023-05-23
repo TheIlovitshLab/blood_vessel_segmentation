@@ -5,7 +5,10 @@ along with instructions for running both segmentation and training on new datase
 
 ## Segment New Images
 To segment new microscope images, follow these steps:
-1. Run the following command in the terminal:
+1. Download the folder **'output'** from: https://drive.google.com/drive/u/1/folders/1YkBGUMTwwCndmApko3rBT6-AFgIq8AUL
+   to the main repository. (blood_vessels_segmentation\output)
+ 
+2. Run the following command in the terminal:
     >python predict.py --model <default=20230512_165741> --data_dir <data_dir> --threshold <default=0.3>
 
     This will generate predictions for the images, which will be saved in data_dir. The mask will be saved as mat files 
