@@ -48,8 +48,9 @@ To train a new model on your own dataset, follow these steps:
 
 ### Date Preparation
 
-1. Create the following folders in dataset: **'raw_data'**, and **'train'**.
-2. Copy the folders to be processed (for example: **'RG11 - MB 175'**) to **'dataset/raw_data'**.
+1. Create the following folders in **'dataset'**: **'raw_data'**, and **'train'**.
+2. Create the following folders in **'train'**: **'images'**, and **'masks'**
+3. Copy the folders to be processed (for example: **'RG11 - MB 175'**) to **'dataset/raw_data'**.
 These folders should contain the original images (**'.tiff)'**, the masks (**'.mat'**), and
 User Verified Table (**'.mat'**).
 3. Run the Matlab file:
