@@ -314,7 +314,7 @@ class UnetSegmentationModel:
         axs[0].set_xticks([])
         axs[0].set_yticks([])
 
-        axs[1].imshow(pred)
+        axs[1].imshow(pred, cmap=UnetSegmentationModel.create_colormap())
         axs[1].set_title('Prediction')
         axs[1].set_xticks([])
         axs[1].set_yticks([])
