@@ -1,3 +1,5 @@
+from matplotlib.colors import LinearSegmentedColormap
+
 from dataset import SegmentationDataset
 # from unet import UNet
 from unet2 import UNet
@@ -34,7 +36,6 @@ class UnetSegmentationModel:
         self.model = UNet().to(self.config.device)
         self.loss_fn = BCEWithLogitsLoss()
         self.optimizer = Adam(self.model.parameters(), lr=config.init_lr)
-
 
     def data_loader(self, partition='train'):
 
@@ -129,7 +130,6 @@ class UnetSegmentationModel:
             pred_loader.len = len(pred_data)
             self.pred_loader = pred_loader
 
-
     def train_model(self):
         self.model.train()
 
@@ -165,7 +165,6 @@ class UnetSegmentationModel:
         # all_dice = sum(all_dice)/len(all_dice)
 
         self.update_train_metrics(all_loss, all_auc)
-
 
     def eval_model(self, epoch, plot=False):
         with torch.no_grad():
@@ -203,11 +202,9 @@ class UnetSegmentationModel:
             # if plot:
             #     self.plot_preds(image, pred, mask, all_auc, epoch, partition='test')
 
-
     def init_metrics(self):
         self.train_metrics = {'train_loss': [], 'train_auc': []}
         self.test_metrics = {'test_loss': [], 'test_auc': []}
-
 
     def update_train_metrics(self, train_loss, train_auc):
         self.train_metrics['train_loss'].append(train_loss.cpu().detach().numpy())
@@ -219,7 +216,6 @@ class UnetSegmentationModel:
         # print('train: loss {:.4f}, acc {:.4f}, precision {:.4f}, recall {:.4f}, dice {:.4f}'.format(train_loss, train_acc, train_precision, train_recall, train_dice))
         print('train: loss {:.4f}, auc {:.4f}'.format(train_loss, train_auc))
 
-
     def update_test_metrics(self, test_loss, test_auc):
         self.test_metrics['test_loss'].append(test_loss.cpu().detach().numpy())
         self.test_metrics['test_auc'].append(test_auc)
@@ -229,7 +225,6 @@ class UnetSegmentationModel:
         # self.test_metrics['test_dice'].append(test_dice)
         # print('train: loss {:.4f}, acc {:.4f}, precision {:.4f}, recall {:.4f}, dice {:.4f}'.format(test_loss, test_acc, test_precision, test_recall, test_dice))
         print('test: loss {:.4f}, auc {:.4f}'.format(test_loss, test_auc))
-
 
     def plot_metrics(self):
         # plots dir
@@ -276,12 +271,22 @@ class UnetSegmentationModel:
 
         return auc
 
-
     def save_model(self, model_name):
         # save model
         savedir = os.path.join(self.model_dir, f'unet_{model_name}.pth')
         torch.save(self.model, savedir)
 
+    @staticmethod
+    def create_colormap():
+        cdict = {'red': [[0.0, 0.0, 0.0],
+                         [1.0, 0.0, 0.0]],
+                 'green': [[0.0, 0.0, 0.0],
+                         [1.0, 1.0, 1.0]],
+                 'blue': [[0.0, 0.0, 0.0],
+                         [1.0, 0.0, 0.0]]
+                 }
+
+        return LinearSegmentedColormap('black_green', segmentdata=cdict, N=256)
 
     @staticmethod
     def plot_preds(image, pred, pred_th, mask, epoch, partition='test', save_dir=None, fig_name=None):
@@ -304,22 +309,32 @@ class UnetSegmentationModel:
         if fig_name is not None:
             fig.suptitle(f'{fig_name}')
 
-        axs[0].imshow(image)
+        axs[0].imshow(image, cmap=UnetSegmentationModel.create_colormap())
         axs[0].set_title('Image')
+        axs[0].set_xticks([])
+        axs[0].set_yticks([])
 
         axs[1].imshow(pred)
         axs[1].set_title('Prediction')
+        axs[1].set_xticks([])
+        axs[1].set_yticks([])
 
-        axs[2].imshow(pred_th)
+        axs[2].imshow(pred_th, cmap=UnetSegmentationModel.create_colormap())
         axs[2].set_title('Binary Prediction')
+        axs[2].set_xticks([])
+        axs[2].set_yticks([])
 
-        axs[3].imshow(mask)
+        axs[3].imshow(mask, cmap=UnetSegmentationModel.create_colormap())
         axs[3].set_title('Ground Truth')
+        axs[3].set_xticks([])
+        axs[3].set_yticks([])
 
         axs[4].imshow(1 - mask, cmap='Greys')
         axs[4].imshow(color_diff, alpha=0.5)
         axs[4].legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
         axs[4].set_title('Difference')
+        axs[4].set_xticks([])
+        axs[4].set_yticks([])
 
         # plt.show()
 
