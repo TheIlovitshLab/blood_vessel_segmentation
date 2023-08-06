@@ -133,7 +133,7 @@ class UnetSegmentationModel:
     def train_model(self):
         self.model.train()
 
-        all_loss, all_auc = [], []
+        all_loss, all_auc, all_f1 = [], [], []
         # all_acc, all_precision, all_recall, all_dice  = [], [], [], []
 
         for batch in self.train_loader:
@@ -143,11 +143,13 @@ class UnetSegmentationModel:
             pred = self.model(image)
             loss = self.loss_fn(pred, mask)
             # loss += dice_loss(F.sigmoid(pred), mask.float(), multiclass=False)
+            f1 = self.model_f1(pred, mask)
 
             auc = self.model_metrics(pred, mask)
 
             all_loss.append(loss)
             all_auc.append(auc)
+            all_f1.append(f1)
             # all_acc.append(acc)
             # all_precision.append(precision)
             # all_recall.append(recall)
@@ -159,18 +161,19 @@ class UnetSegmentationModel:
 
         all_loss = sum(all_loss)/len(all_loss)
         all_auc = sum(all_auc) / len(all_auc)
+        all_f1 = sum(all_f1) / len(all_f1)
         # all_acc = sum(all_acc) / len(all_acc)
         # all_precision = sum(all_precision)/len(all_precision)
         # all_recall = sum(all_recall)/len(all_recall)
         # all_dice = sum(all_dice)/len(all_dice)
 
-        self.update_train_metrics(all_loss, all_auc)
+        self.update_train_metrics(all_loss, all_auc, all_f1)
 
     def eval_model(self, epoch, plot=False):
         with torch.no_grad():
             self.model.eval()
 
-            all_loss, all_auc = [], []
+            all_loss, all_auc, all_f1 = [], [], []
             # all_acc, all_precision, all_recall, all_dice = [], [], [], []
 
             for batch in self.test_loader:
@@ -180,9 +183,11 @@ class UnetSegmentationModel:
                 pred = self.model(image)
                 loss = self.loss_fn(pred, mask)
                 auc = self.model_metrics(pred, mask)
+                f1 = self.model_f1(pred, mask)
 
                 all_loss.append(loss)
                 all_auc.append(auc)
+                all_f1.append(f1)
                 # all_acc.append(acc)
                 # all_precision.append(precision)
                 # all_recall.append(recall)
@@ -190,6 +195,7 @@ class UnetSegmentationModel:
 
             all_loss = sum(all_loss)/len(all_loss)
             all_auc = sum(all_auc) / len(all_auc)
+            all_f1 = sum(all_f1) / len(all_f1)
             # all_acc = sum(all_acc) / len(all_acc)
             # all_precision = sum(all_precision)/len(all_precision)
             # all_recall = sum(all_recall) / len(all_recall)
@@ -197,34 +203,37 @@ class UnetSegmentationModel:
 
             self.test_loss = all_loss
             self.test_auc = all_auc
-            self.update_test_metrics(all_loss, all_auc)
+            self.test_f1 = all_f1
+            self.update_test_metrics(all_loss, all_auc, all_f1)
             #
             # if plot:
             #     self.plot_preds(image, pred, mask, all_auc, epoch, partition='test')
 
     def init_metrics(self):
-        self.train_metrics = {'train_loss': [], 'train_auc': []}
-        self.test_metrics = {'test_loss': [], 'test_auc': []}
+        self.train_metrics = {'train_loss': [], 'train_auc': [], 'train_f1': []}
+        self.test_metrics = {'test_loss': [], 'test_auc': [], 'test_f1': []}
 
-    def update_train_metrics(self, train_loss, train_auc):
+    def update_train_metrics(self, train_loss, train_auc, train_f1):
         self.train_metrics['train_loss'].append(train_loss.cpu().detach().numpy())
         self.train_metrics['train_auc'].append(train_auc)
+        self.train_metrics['train_f1'].append(train_f1)
         # self.train_metrics['train_acc'].append(train_acc)
         # self.train_metrics['train_precision'].append(train_precision)
         # self.train_metrics['train_recall'].append(train_recall)
         # self.train_metrics['train_dice'].append(train_dice)
         # print('train: loss {:.4f}, acc {:.4f}, precision {:.4f}, recall {:.4f}, dice {:.4f}'.format(train_loss, train_acc, train_precision, train_recall, train_dice))
-        print('train: loss {:.4f}, auc {:.4f}'.format(train_loss, train_auc))
+        print('train: loss {:.4f}, auc {:.4f}, f1 {:.4f}'.format(train_loss, train_auc, train_f1))
 
-    def update_test_metrics(self, test_loss, test_auc):
+    def update_test_metrics(self, test_loss, test_auc, test_f1):
         self.test_metrics['test_loss'].append(test_loss.cpu().detach().numpy())
         self.test_metrics['test_auc'].append(test_auc)
+        self.test_metrics['test_f1'].append(test_f1)
         # self.test_metrics['test_acc'].append(test_acc)
         # self.test_metrics['test_precision'].append(test_precision)
         # self.test_metrics['test_recall'].append(test_recall)
         # self.test_metrics['test_dice'].append(test_dice)
         # print('train: loss {:.4f}, acc {:.4f}, precision {:.4f}, recall {:.4f}, dice {:.4f}'.format(test_loss, test_acc, test_precision, test_recall, test_dice))
-        print('test: loss {:.4f}, auc {:.4f}'.format(test_loss, test_auc))
+        print('test: loss {:.4f}, auc {:.4f}, f1 {:.4f}'.format(test_loss, test_auc, test_f1))
 
     def plot_metrics(self):
         # plots dir
@@ -244,8 +253,18 @@ class UnetSegmentationModel:
             plt.legend(loc='lower left')
             plt.savefig(os.path.join(plots_dir, f'{metric}_plot'))
 
+    @staticmethod
+    def model_f1(pred, mask):
+        pred = (pred >= 0).to(dtype=torch.float)
+        pred_flat = torch.reshape(pred, (1, -1))
+        mask_flat = torch.reshape(mask, (1, -1))
 
-    def model_metrics(self, pred, mask):
+        f1 = metrics.f1_score(mask_flat.detach().numpy().squeeze(), pred_flat.detach().numpy().squeeze())
+
+        return f1
+
+    @staticmethod
+    def model_metrics(pred, mask):
 
         pred = torch.sigmoid(pred)
         # pred_th[pred_th >= config.threshold] = 1
