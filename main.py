@@ -328,7 +328,8 @@ class UnetSegmentationModel:
         if fig_name is not None:
             fig.suptitle(f'{fig_name}')
         saveax = fig_name in ['rg4_8_striatum','rg26_5_cortex_2','sk64_6_hippocampus_2']
-        p = r'G:\.shortcut-targets-by-id\18lsCaCKny2GZIFFe9vXOWOBbuEWieEGm\Tali_Ilovitsh_Lab\Roni\NB paper\segmentation figure'
+        # p = r'G:\.shortcut-targets-by-id\18lsCaCKny2GZIFFe9vXOWOBbuEWieEGm\Tali_Ilovitsh_Lab\Roni\NB paper\segmentation figure'
+        p = ''
         axs[0].imshow(image, cmap=UnetSegmentationModel.create_colormap())
         axs[0].set_xticks([])
         axs[0].set_yticks([])
