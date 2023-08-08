@@ -327,33 +327,48 @@ class UnetSegmentationModel:
             fig.suptitle(f'epoch {epoch+1} - {partition}')
         if fig_name is not None:
             fig.suptitle(f'{fig_name}')
-
+        saveax = fig_name in ['rg4_8_striatum','rg26_5_cortex_2','sk64_6_hippocampus_2']
+        p = r'G:\.shortcut-targets-by-id\18lsCaCKny2GZIFFe9vXOWOBbuEWieEGm\Tali_Ilovitsh_Lab\Roni\NB paper\segmentation figure'
         axs[0].imshow(image, cmap=UnetSegmentationModel.create_colormap())
-        axs[0].set_title('Image')
         axs[0].set_xticks([])
         axs[0].set_yticks([])
+        if saveax:
+            extent = axs[0].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+            fig.savefig(rf'{p}\{fig_name}_Image.png', bbox_inches=extent)
+        axs[0].set_title('Image')
 
-        axs[1].imshow(pred, cmap=UnetSegmentationModel.create_colormap())
+        axs[1].imshow(pred, cmap='Greys')
         axs[1].set_title('Prediction')
         axs[1].set_xticks([])
         axs[1].set_yticks([])
 
-        axs[2].imshow(pred_th, cmap=UnetSegmentationModel.create_colormap())
-        axs[2].set_title('Binary Prediction')
+        axs[2].imshow(pred_th, cmap='Greys')
         axs[2].set_xticks([])
         axs[2].set_yticks([])
+        if saveax:
+            extent = axs[2].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+            fig.savefig(rf'{p}\{fig_name}_Binary Prediction.png', bbox_inches=extent)
+        axs[2].set_title('Binary Prediction')
 
-        axs[3].imshow(mask, cmap=UnetSegmentationModel.create_colormap())
-        axs[3].set_title('Ground Truth')
+
+        axs[3].imshow(mask, cmap='Greys')
         axs[3].set_xticks([])
         axs[3].set_yticks([])
+        if saveax:
+            extent = axs[3].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+            fig.savefig(rf'{p}\{fig_name}_Ground Truth.png', bbox_inches=extent)
+        axs[3].set_title('Ground Truth')
 
         axs[4].imshow(1 - mask, cmap='Greys')
         axs[4].imshow(color_diff, alpha=0.5)
-        axs[4].legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-        axs[4].set_title('Difference')
         axs[4].set_xticks([])
         axs[4].set_yticks([])
+        if saveax:
+            extent = axs[4].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+            fig.savefig(rf'{p}\{fig_name}_Difference.png', bbox_inches=extent)
+        axs[4].legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        axs[4].set_title('Difference')
+
 
         # plt.show()
 
@@ -446,7 +461,7 @@ class UnetSegmentationModel:
             precision, recall = [], []
             tpr, fpr = [], []
             f_score = []
-            TP, FP, TN, FN =    [], [], [], []
+            TP, FP, TN, FN = [], [], [], []
             for th in thresholds:
                 all_preds_th = np.zeros(all_preds.shape)
                 all_preds_th[all_preds >= th] = 1
