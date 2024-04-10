@@ -3,6 +3,31 @@ This repository contains the code for blood vessel segmentation in microscope im
 along with instructions for running both segmentation and training on new datasets.
 <img src="resources/io_rg11_3_striatum.png">
 
+## Paper
+
+This repository provides the UNet segmentation in the following paper:
+
+**Enhanced capillary delivery with nanobubble-mediated blood-brain barrier opening** <br/>
+[Roni Gattegno](https://www.linkedin.com/in/roni-gattegno/), [Lilach Arbel](https://www.linkedin.com/in/lilach-arbel/), [Noa Riess](https://www.linkedin.com/in/noa-riess-228807217/), [Hila Shinar](https://www.linkedin.com/in/hila-shinar/?originalSubdomain=il), [Sharon Katz](https://www.linkedin.com/in/sharon-kz/) and [Tali Ilovitsh](https://www.linkedin.com/in/tali-ilovitsh/) <br/>
+Tel Aviv University <br/>
+Journal of Controlled Release ([JCR](https://www.sciencedirect.com/journal/journal-of-controlled-release)) <br/>
+[paper](https://www.sciencedirect.com/science/article/abs/pii/S0168365924002220?via%3Dihub) | [code](https://github.com/TheIlovitshLab/blood_vessel_segmentation)
+
+## Citation
+If you use this code for your research, please cite our paper:
+```
+@article{gattegno2023enhanced,
+  title={Enhanced capillary delivery with nanobubble-mediated blood-brain barrier opening and advanced high resolution vascular segmentation},
+  author={Gattegno, Roni and Arbel, Lilach and Riess, Noa and Kats, Sharon and Ilovitsh, Tali},
+  journal={bioRxiv},
+  pages={2023--12},
+  year={2023},
+  publisher={Cold Spring Harbor Laboratory}
+}
+```
+
+
+# How to use
 ### For the first time you run the code on your computer
 1. Install venv (If Necessary).
    * If you are using Python 3.3 or later, the `venv` module is the default standard utility for creating virtual environments, and it comes with your Python installation. If you are using a lower version, consider upgrading your Python version.
